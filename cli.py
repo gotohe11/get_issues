@@ -15,7 +15,7 @@ def pretty_print_issues(lst, num, project_name):
     """
     print(f'List of {num} issues in the "{project_name}" repository:')
     columns = ['№', 'title', 'created at', 'updated at', 'comments']
-    print(tabulate(lst[:num+1], headers=columns))
+    print(tabulate(lst[:num], headers=columns))
 
 
 def run():
@@ -64,9 +64,11 @@ def run():
 
 def help_command():
     print(
+        'Available commands:\n'
         '/help - commands info;\n'
         '/exit - exit;\n'
         '/get_all - print whole list of issues\n'
+        '/get(n) - get a list of {n} newest issues (but not more than 100 at once);\n'
         )
 
 
@@ -74,10 +76,14 @@ def get_all():
     pretty_print_issues(pretty_issues_list, len(pretty_issues_list), project_name)
 
 
+def get(num):
+    pretty_print_issues(pretty_issues_list, num, project_name)
+
+
 command_dict = {
     '/help': help_command,
-    '/get_all': get_all
-
+    '/get_all': get_all,
+    '/get': get
 
 }
 
@@ -100,12 +106,16 @@ def ask_user():
 
         if command.lower() == '/exit':
             break
+        elif command.lower().startswith('/get'):
+            issues_num = int(command[command.index('(') + 1: command.index(')')])
+            print(issues_num)
+            command_dict[command.lower()[:4]](issues_num)
         else:
             if command.lower() not in command_dict.keys():
                 print(f'The command "{command}" not found. Try again.')
                 continue
             else:
-                command_dict[command]()
+                command_dict[command.lower()]()
 
 
 
