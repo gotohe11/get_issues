@@ -14,17 +14,19 @@ class ProjectNotFoundError(GithubError):
 def make_issues_list(project_name):
     base_url = f'https://api.github.com/repos/{project_name}/issues'
     total_list = []
-    counter = 1
+    page_counter = 1
+    issues_counter = 1
     while True:
         temp_list = []
-        add_url = f'{base_url}?page={counter}'
+        add_url = f'{base_url}?page={page_counter}'
         try:
             response = requests.get(add_url)
             status_code = response.status_code
+            #print('status code:', status_code)
             if status_code == 404:
                 raise ProjectNotFoundError
-            # if status_code != 404 and status_code != 200:
-            #     raise GithubError
+            if status_code != 404 and status_code != 200:
+                raise GithubError
         except ProjectNotFoundError:
             raise ProjectNotFoundError
         except Exception:
@@ -32,11 +34,14 @@ def make_issues_list(project_name):
 
         for item in response.json():
             if 'pull_request' not in item.keys():
-                temp_list.append((item['title'], item['created_at'],
-                                  item['updated_at'], item['comments']))
+                # in item['created_at'] and item['updated_at'] - [0:10] takes only date info
+                temp_list.append((issues_counter, item['title'], item['created_at'][0:10],
+                                  item['updated_at'][0:10], item['comments']))
+                issues_counter += 1
+
         if temp_list:
             total_list.extend(temp_list)
-            counter += 1
+            page_counter += 1
         else:
             break
 
@@ -44,7 +49,7 @@ def make_issues_list(project_name):
 
 
 if __name__ == "__main__":
-    project_name = "s0md3v/Photon1"
+    project_name = "s0md3v/Photon"
     l = make_issues_list(project_name)
     for i in range(len(l)):
         print(f'{i + 1}. {l[i]}', sep='\n')
