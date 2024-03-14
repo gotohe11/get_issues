@@ -9,7 +9,7 @@ ISSUES_LIST = []
 LAST_ISSUE_NUM = 0
 
 
-def pretty_print_issues(issues_list, num_start, num_finish=100):
+def pretty_print_issues(num_start, num_finish=100):
     """
     Prints a list of issues sorted by creation date (by default),
     in the form of a table.
@@ -20,10 +20,10 @@ def pretty_print_issues(issues_list, num_start, num_finish=100):
     """
     #print(f'List of issues in the "{project_name}" repository:')
     columns = ['№', 'title', 'created at', 'updated at', 'comments']
-    print(tabulate(issues_list[num_start-1:num_finish], headers=columns))
+    print(tabulate(ISSUES_LIST[num_start-1:num_finish], headers=columns))
 
 
-def help_command(*args):
+def help_command():
     print(
         'Available commands:\n'
         '/help - commands info;\n'
@@ -35,12 +35,13 @@ def help_command(*args):
         )
 
 
-def get_command(*args):
-    project_name = args[0]
+def get_command(project_name):
+    global ISSUES_LIST
+    global LAST_ISSUE_NUM
+
     success = False
     while not success:
         try:
-            global ISSUES_LIST
             ISSUES_LIST = make_issues_list(project_name)
         except ProjectNotFoundError:
             print(f'Project "{project_name}" not found, check your spelling.')
@@ -49,44 +50,51 @@ def get_command(*args):
         except GithubError as err:
             print(f'Error communicating with Github: {err}')
             break
-
         success = True
-        global LAST_ISSUE_NUM
         LAST_ISSUE_NUM = 0
         print(f'There are {len(ISSUES_LIST)} issues in the "{project_name}" repository.')
 
 
-def exit_command(*args):
+def exit_command():
     sys.exit()
 
 
-def print_command(issues_list, *args):
-    if args:
-        if args[0].isdigit():
-            issue_number = int(args[0])
-            if issue_number < 1 or issue_number > len(issues_list):
-                print('The number is out of range. Try again.')
-            else:
-                pretty_print_issues(issues_list, issue_number, issue_number)
-                global LAST_ISSUE_NUM
-                LAST_ISSUE_NUM = issue_number
-        else:
-            print('ValueError. Check your spelling and try again.')    # или здесь сделать исключение?
-
-    else:
-        pretty_print_issues(issues_list, 1, 10)
-        LAST_ISSUE_NUM = 10
-
-
-def next_command(issues_list, *args):
+def print_command(*args):
+    global ISSUES_LIST
     global LAST_ISSUE_NUM
-    num_1 = LAST_ISSUE_NUM + 1
-    num_2 = num_1 + 9
-    if num_1 < 1 or num_1 > len(issues_list):
-        print('You have seen the whole issues list.')
+
+    if not ISSUES_LIST:
+        print('Firstly, try the command "/get <owner>/<repo>".')
     else:
-        pretty_print_issues(issues_list, num_1, num_2)
-        LAST_ISSUE_NUM = num_2
+        if args:
+            if args[0].isdigit():
+                issue_number = int(args[0])
+                if issue_number < 1 or issue_number > len(ISSUES_LIST):
+                    print('The number is out of range. Try again.')
+                else:
+                    pretty_print_issues(issue_number, issue_number)
+                    LAST_ISSUE_NUM = issue_number
+            else:
+                print('ValueError. Check your spelling and try again.')    # или здесь сделать исключение?
+        else:
+            pretty_print_issues(1, 10)
+            LAST_ISSUE_NUM = 10
+
+
+def next_command():
+    global ISSUES_LIST
+    global LAST_ISSUE_NUM
+
+    if not ISSUES_LIST:
+        print('Firstly, try the command "/get <owner>/<repo>".')
+    else:
+        num_1 = LAST_ISSUE_NUM + 1
+        num_2 = num_1 + 9
+        if num_1 < 1 or num_1 > len(ISSUES_LIST):
+            print('You have seen the whole issues list.')
+        else:
+            pretty_print_issues(num_1, num_2)
+            LAST_ISSUE_NUM = num_2
 
 
 command_dict = {
@@ -118,13 +126,7 @@ def run():
             print(f'The command "{cmd}" not found. Try again.')
             continue
         else:
-            if cmd == '/get' or cmd == '/exit' or cmd == '/help':
-                command_dict[cmd](*args)
-            elif not ISSUES_LIST:
-                print('Firstly, try the command "/get <owner>/<repo>".')
-                continue
-            else:
-                command_dict[cmd](ISSUES_LIST, *args)
+            command_dict[cmd](*args)
 
 
 
