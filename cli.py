@@ -13,14 +13,12 @@ def pretty_print_issues(num_start, num_finish=100):
     """
     Prints a list of issues sorted by creation date (by default),
     in the form of a table.
-    :param issues_list: list of issues
     :param num_start: required number of issues
     :param num_finish: required number of issues
     :return: data table
     """
-    #print(f'List of issues in the "{project_name}" repository:')
     columns = ['№', 'title', 'created at', 'updated at', 'comments']
-    print(tabulate(ISSUES_LIST[num_start-1:num_finish], headers=columns))
+    print(tabulate(ISSUES_LIST[num_start:num_finish], headers=columns))
 
 
 def help_command():
@@ -31,7 +29,7 @@ def help_command():
         '/get <owner>/<repo> (for example, "/get s0md3v/Photon") - '
         'gets repo issues list and prints the amount of them;\n'
         '/print N - prints the N-th issue (if there is no N, prints 10 newest issues);\n'
-        '/next - prints the next 10 issues or the remainder'
+        '/next - prints the next 10 issues or the remainder.'
         )
 
 
@@ -59,26 +57,28 @@ def exit_command():
     sys.exit()
 
 
-def print_command(*args):
+def print_command(issue_number=None):
     global ISSUES_LIST
     global LAST_ISSUE_NUM
 
     if not ISSUES_LIST:
         print('Firstly, try the command "/get <owner>/<repo>".')
+        return
+
+    if issue_number is None:
+        # prints first 10, if no args
+        limit = 10
+        skip = 0
     else:
-        if args:
-            if args[0].isdigit():
-                issue_number = int(args[0])
-                if issue_number < 1 or issue_number > len(ISSUES_LIST):
-                    print('The number is out of range. Try again.')
-                else:
-                    pretty_print_issues(issue_number, issue_number)
-                    LAST_ISSUE_NUM = issue_number
-            else:
-                print('ValueError. Check your spelling and try again.')    # или здесь сделать исключение?
-        else:
-            pretty_print_issues(1, 10)
-            LAST_ISSUE_NUM = 10
+        limit = 1
+        try:
+            skip = int(issue_number) - 1
+        except ValueError:
+            print('Enter a number with "/print" command, not a string.')
+            return
+
+    pretty_print_issues(skip, skip + limit)
+    LAST_ISSUE_NUM = skip + limit
 
 
 def next_command():
@@ -87,14 +87,15 @@ def next_command():
 
     if not ISSUES_LIST:
         print('Firstly, try the command "/get <owner>/<repo>".')
+        return
+
+    num_1 = LAST_ISSUE_NUM
+    num_2 = num_1 + 10
+    if num_1 < 1 or num_1 > len(ISSUES_LIST):
+        print('You have seen the whole issues list.')
     else:
-        num_1 = LAST_ISSUE_NUM + 1
-        num_2 = num_1 + 9
-        if num_1 < 1 or num_1 > len(ISSUES_LIST):
-            print('You have seen the whole issues list.')
-        else:
-            pretty_print_issues(num_1, num_2)
-            LAST_ISSUE_NUM = num_2
+        pretty_print_issues(num_1, num_2)
+        LAST_ISSUE_NUM = num_2
 
 
 command_dict = {
@@ -126,7 +127,11 @@ def run():
             print(f'The command "{cmd}" not found. Try again.')
             continue
         else:
-            command_dict[cmd](*args)
+            try:
+                command_dict[cmd](*args)
+            except TypeError:
+                print('Wrong number of arguments provided. '
+                      'Or arguments added when it was not necessary.')
 
 
 
