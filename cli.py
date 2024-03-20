@@ -1,6 +1,4 @@
-from typing import Dict
 import sys
-import requests
 from tabulate import tabulate
 from github import make_issues_list, GithubError, ProjectNotFoundError
 
@@ -51,6 +49,7 @@ def get_command(project_name):
         success = True
         LAST_ISSUE_NUM = 0
         print(f'There are {len(ISSUES_LIST)} issues in the "{project_name}" repository.')
+        return 'success'
 
 
 def exit_command():
@@ -63,7 +62,7 @@ def print_command(issue_number=None):
 
     if not ISSUES_LIST:
         print('Firstly, try the command "/get <owner>/<repo>".')
-        return
+        return 'failed'
 
     if issue_number is None:
         # prints first 10, if no args
@@ -75,10 +74,11 @@ def print_command(issue_number=None):
             skip = int(issue_number) - 1
         except ValueError:
             print('Enter a number with "/print" command, not a string.')
-            return
+            return 'failed'
 
     pretty_print_issues(skip, skip + limit)
     LAST_ISSUE_NUM = skip + limit
+    return 'success'
 
 
 def next_command():
@@ -87,15 +87,17 @@ def next_command():
 
     if not ISSUES_LIST:
         print('Firstly, try the command "/get <owner>/<repo>".')
-        return
+        return 'failed'
 
     num_1 = LAST_ISSUE_NUM
     num_2 = num_1 + 10
-    if num_1 < 1 or num_1 > len(ISSUES_LIST):
+    if num_1 < 0 or num_1 > len(ISSUES_LIST):
         print('You have seen the whole issues list.')
+        return 'success but'
     else:
         pretty_print_issues(num_1, num_2)
         LAST_ISSUE_NUM = num_2
+        return 'success'
 
 
 command_dict = {
@@ -107,6 +109,11 @@ command_dict = {
 }
 
 
+def ask_user():
+    return input('Enter the command '
+                 '(for more information about commands input "/help"): ')
+
+
 def run():
     """ Запускает пользовательский (консольный) интерфейс приложения.
 
@@ -114,8 +121,7 @@ def run():
     ошибок.
     """
     while True:
-        user_command = input('Enter the command '
-                            '(for more information about commands input "/help"): ')
+        user_command = ask_user()
         parts = user_command.lower().split()
         cmd = parts[0]
         if len(parts) > 1:

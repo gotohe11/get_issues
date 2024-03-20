@@ -1,9 +1,8 @@
-from cli import *
-from github import make_issues_list, GithubError, ProjectNotFoundError
+import cli
 
 
 def main():
-    run()
+    cli.run()
 
 
 if __name__ == "__main__":
