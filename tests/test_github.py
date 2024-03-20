@@ -1,6 +1,7 @@
 import responses
 import pytest
-from github import *
+
+from get_issues.github import *
 
 
 @responses.activate
@@ -19,9 +20,9 @@ def test_make_issues_list_404Error():
 @responses.activate
 def test_make_issues_list_GithubError():
     valid_json_answer = [{
-  "message": "Not Found",
-  "documentation_url": "https://docs.github.com/rest/issues/issues#list-repository-issues"
-}]
+      "message": "Not Found",
+      "documentation_url": "https://docs.github.com/rest/issues/issues#list-repository-issues"
+    }]
 
     responses.add(method=responses.GET, url='https://api.github.com/repos/shobrook/rebound1/issues?page=1',
                   json=valid_json_answer, status=500)
@@ -62,6 +63,3 @@ def test_make_issues_list_GithubError():
 #                                   valid_json_answer['updated_at'][0:10], valid_json_answer['comments'])]
     c=1
 #[(1, 'LICENSE file missing from root directory', '2021-05-06', '2021-05-06', 0)]
-
-
-
