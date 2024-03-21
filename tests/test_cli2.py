@@ -1,6 +1,6 @@
 import pytest
 
-from get_issues import cli, errors, github
+from .. import cli, errors, github
 
 
 @pytest.fixture()

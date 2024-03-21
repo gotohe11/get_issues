@@ -1,7 +1,7 @@
 import responses
 import pytest
 
-from get_issues.github import *
+from ..github import *
 
 
 @responses.activate
@@ -61,5 +61,5 @@ def test_make_issues_list_GithubError():
 #     issues_list = make_issues_list('shobrook/rebound')
 #     assert issues_list == [(1, valid_json_answer['title'], valid_json_answer['created_at'][0:10],
 #                                   valid_json_answer['updated_at'][0:10], valid_json_answer['comments'])]
-    c=1
+#    c=1
 #[(1, 'LICENSE file missing from root directory', '2021-05-06', '2021-05-06', 0)]

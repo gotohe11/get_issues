@@ -1,7 +1,7 @@
 import pytest
 
-from get_issues import cli
-from get_issues import github
+from .. import cli
+from .. import github
 
 
 def _fake_issues():
