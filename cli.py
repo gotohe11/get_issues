@@ -1,6 +1,8 @@
 import sys
 from tabulate import tabulate
-from github import make_issues_list, GithubError, ProjectNotFoundError
+
+from . import errors
+from . import github
 
 
 ISSUES_LIST = []
@@ -38,18 +40,18 @@ def get_command(project_name):
     success = False
     while not success:
         try:
-            ISSUES_LIST = make_issues_list(project_name)
-        except ProjectNotFoundError:
+            ISSUES_LIST = github.make_issues_list(project_name)
+        except github.ProjectNotFoundError:
             print(f'Project "{project_name}" not found, check your spelling.')
             ISSUES_LIST = []
             break
-        except GithubError as err:
+        except github.GithubError as err:
             print(f'Error communicating with Github: {err}')
             break
         success = True
         LAST_ISSUE_NUM = 0
         print(f'There are {len(ISSUES_LIST)} issues in the "{project_name}" repository.')
-        return 'success'
+        return ISSUES_LIST
 
 
 def exit_command():
@@ -114,6 +116,23 @@ def ask_user():
                  '(for more information about commands input "/help"): ')
 
 
+def _run_one(command: str):
+    parts = command.lower().split()
+    cmd = parts[0]
+    if len(parts) > 1:
+        args = parts[1:]
+    else:
+        args = []
+
+    if cmd not in command_dict:
+        raise errors.CommandNotFound
+
+    try:
+        return command_dict[cmd](*args)
+    except TypeError:
+        raise errors.CommandArgsError
+
+
 def run():
     """ Запускает пользовательский (консольный) интерфейс приложения.
 
@@ -122,23 +141,10 @@ def run():
     """
     while True:
         user_command = ask_user()
-        parts = user_command.lower().split()
-        cmd = parts[0]
-        if len(parts) > 1:
-            args = parts[1:]
-        else:
-            args = []
-
-        if cmd not in command_dict.keys():
-            print(f'The command "{cmd}" not found. Try again.')
-            continue
-        else:
-            try:
-                command_dict[cmd](*args)
-            except TypeError:
-                print('Wrong number of arguments provided. '
-                      'Or arguments added when it was not necessary.')
-
+        try:
+            _run_one(user_command)
+        except errors.CommandError as exc:
+            print(exc)
 
 
 if __name__ == "__main__":

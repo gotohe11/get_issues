@@ -1,6 +1,8 @@
 import pytest
-import cli
-import github
+
+from .. import cli
+from .. import github
+
 
 def _fake_issues():
     ISSUES_LIST = [
@@ -85,4 +87,3 @@ def test_next_command():
 #                          ])
 # def test_run(input_data, res):
 #     assert run() == res
-
