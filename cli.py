@@ -63,9 +63,8 @@ def print_command(issue_number=None):
     global LAST_ISSUE_NUM
 
     if not ISSUES_LIST:
-        print('Firstly, try the command "/get <owner>/<repo>".')
-        return 'failed'
-
+        raise errors.IncorrectOder('Firstly, try the command '
+                                   '"/get <owner>/<repo>".')
     if issue_number is None:
         # prints first 10, if no args
         limit = 10
@@ -75,12 +74,14 @@ def print_command(issue_number=None):
         try:
             skip = int(issue_number) - 1
         except ValueError:
-            print('Enter a number with "/print" command, not a string.')
-            return 'failed'
+            raise errors.CommandArgsError('Enter a number with "/print" '
+                                          'command, not a string.')
+        if skip >= len(ISSUES_LIST) or skip < 0:
+            raise errors.CommandArgsError('Number out of issues list range.')
 
-    pretty_print_issues(skip, skip + limit)
+    pretty_print_issues(skip, skip+limit)
     LAST_ISSUE_NUM = skip + limit
-    return 'success'
+    return ISSUES_LIST[skip:skip+limit]
 
 
 def next_command():
@@ -88,18 +89,16 @@ def next_command():
     global LAST_ISSUE_NUM
 
     if not ISSUES_LIST:
-        print('Firstly, try the command "/get <owner>/<repo>".')
-        return 'failed'
-
+        raise errors.IncorrectOder('Firstly, try the command '
+                                   '"/get <owner>/<repo>".')
     num_1 = LAST_ISSUE_NUM
     num_2 = num_1 + 10
-    if num_1 < 0 or num_1 > len(ISSUES_LIST):
-        print('You have seen the whole issues list.')
-        return 'success but'
+    if num_1 < 0 or num_1 >= len(ISSUES_LIST):
+        raise errors.CommandArgsError('You have seen the whole issues list.')
     else:
         pretty_print_issues(num_1, num_2)
         LAST_ISSUE_NUM = num_2
-        return 'success'
+        return ISSUES_LIST[num_1:num_2]
 
 
 command_dict = {
@@ -125,12 +124,12 @@ def _run_one(command: str):
         args = []
 
     if cmd not in command_dict:
-        raise errors.CommandNotFound
+        raise errors.CommandNotFound('Command not found')
 
     try:
         return command_dict[cmd](*args)
     except TypeError:
-        raise errors.CommandArgsError
+        raise errors.CommandArgsError('Wrong number of arguments provided')
 
 
 def run():
