@@ -2,7 +2,6 @@ import pytest
 from .. import cli, errors, github
 
 
-TEST_LAST_ISSUE_NUM = 0
 TEST_ISSUES = [
     (1, 'Title #1', '2021-05-06', '2021-05-06', 0),
     (2, 'Title #2', '2021-01-10', '2022-01-14', 5),
@@ -124,9 +123,10 @@ def test_print_command_wrong_order():
 def test_next_command_right():
     """Проверка функции печати последующих 10 тикетов."""
     cli.ISSUES_LIST = TEST_ISSUES
-    cli.LAST_ISSUE_NUM = TEST_LAST_ISSUE_NUM
+    test_last_num = 2
+    cli.LAST_ISSUE_NUM = test_last_num
     result = cli.next_command()
-    assert result == TEST_ISSUES[0:10]
+    assert result == TEST_ISSUES[test_last_num:test_last_num+10]
 
 
 def test_next_command_wrong_order():
@@ -141,6 +141,6 @@ def test_next_command_whole_list():
     """Проверка функции печати последующих 10 тикетов,
     когда все тикеты уже были просмотрены пользователем."""
     cli.ISSUES_LIST = TEST_ISSUES
-    cli.LAST_ISSUE_NUM = TEST_LAST_ISSUE_NUM + len(TEST_ISSUES)
+    cli.LAST_ISSUE_NUM = len(TEST_ISSUES) + 100
     with pytest.raises(errors.CommandArgsError):
         cli.next_command()
