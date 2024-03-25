@@ -14,3 +14,10 @@ class CommandArgsError(CommandError):
 
     def __repr__(self):
         return 'Wrong number of arguments provided'
+
+
+class IncorrectOder(CommandError):
+    """ Была введена команда печати до получения списка тикетов """
+
+    def __repr__(self):
+        return 'Firstly, try the command "/get <owner>/<repo>".'
