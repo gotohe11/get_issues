@@ -28,5 +28,14 @@
     "tanya": {
         "name": "tanya",
         "subsc_list": []
+    },
+    "dasha": {
+        "name": "dasha",
+        "subsc_list": [
+            {
+                "name": "hhh",
+                "last_issue_num": 0
+            }
+        ]
     }
 }
