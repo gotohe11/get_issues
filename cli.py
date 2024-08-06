@@ -1,12 +1,17 @@
 import sys
 from tabulate import tabulate
+import json
 
 from . import errors
 from . import github
+from . import users
+from . import subscriptions
+from . import database
 
 
 ISSUES_LIST = []
 LAST_ISSUE_NUM = 0
+USER = None    # несет экземпляр класса юзер
 
 
 def pretty_print_issues(num_start, num_finish=100):
@@ -101,12 +106,57 @@ def next_command():
         return ISSUES_LIST[num_1:num_2]
 
 
+def login_command(user_name='no_name'):   # имя получилось нечувств к регистру
+    if user_name == 'no_name':
+        raise errors.CommandArgsError('You should text your login-name first')
+    global USER
+    USER = database.Database.load_user(user_name)
+
+
+
+def sub_command(project_name=None):
+    if not project_name:
+        raise errors.CommandArgsError('You forgot to text a project name')
+    global USER
+    if not USER:
+        raise errors.IncorrectOder('To subscribe a project, you first need to log in. '
+                                   'Try </login> command')
+    try:
+        USER.add_subsc(project_name)
+        database.Database.save_sub(USER)  # просто переписываем весь список подписок юзера заново
+        print(f'{USER.name}, you subscribed to "{project_name}" repository.')
+    except NameError as er:
+        print(er)
+
+
+
+def unsub_command(project_name=None):
+    if not project_name:
+        raise errors.CommandArgsError('You forgot to text a project name')
+    global USER
+    if not USER:
+        raise errors.IncorrectOder('To unsubscribe from a project, you first need to log in. '
+                                   'Try </login> command')
+    try:
+        USER.remove_subsc(project_name)   # удаляем ненужную из списка подписок экз.класса Юзер
+        database.Database.save_sub(USER)  # просто переписываем весь список подписок Юзера заново
+        print(f'{USER.name}, you unsubscribed from the "{project_name}" repository.')
+
+    except NameError as er:
+        print(er)
+
+
+
 command_dict = {
     '/help': help_command,
     '/get': get_command,
     '/exit': exit_command,
     '/print': print_command,
-    '/next': next_command
+    '/next': next_command,
+    '/login': login_command,
+    '/sub': sub_command,
+    '/unsub': unsub_command
+
 }
 
 
@@ -129,12 +179,11 @@ def _run_one(command: str):
     try:
         return command_dict[cmd](*args)
     except TypeError:
-        raise errors.CommandArgsError('Wrong number of arguments provided')
+        raise errors.CommandArgsError('Wrong number of arguments provided.')
 
 
 def run():
     """ Запускает пользовательский (консольный) интерфейс приложения.
-
     Чтобы "запуск" не был совсем тривиальным, реализуем перезапрос в случае
     ошибок.
     """

@@ -1,0 +1,32 @@
+{
+    "vasya": {
+        "name": "vasya",
+        "subsc_list": []
+    },
+    "gosha": {
+        "name": "gosha",
+        "subsc_list": []
+    },
+    "antosha": {
+        "name": "antosha",
+        "subsc_list": [
+            {
+                "name": "shobrook/rebound",
+                "last_issue_num": 0
+            }
+        ]
+    },
+    "vova": {
+        "name": "vova",
+        "subsc_list": [
+            {
+                "name": "shobrook/rebound",
+                "last_issue_num": 0
+            }
+        ]
+    },
+    "tanya": {
+        "name": "tanya",
+        "subsc_list": []
+    }
+}
