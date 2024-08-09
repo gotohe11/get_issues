@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-from . import cli
 from . import subscriptions
 
 
@@ -11,10 +10,9 @@ class User:
 
 
     def add_subsc(self, project_name):
-        res = (obj.name for obj in self.subsc_list)
+        res = [item.name for item in self.subsc_list]
         if project_name in res:
             raise NameError(f'You have already subscribed to the "{project_name}" repository.')
-        check_project = cli.get_command(project_name)  # проверяем все ли так с введенным проектом, есть ненужный принт
         subs_obj = subscriptions.Subscription(project_name)
         self.subsc_list.append(subs_obj)
         #print('добавилась подписка')
@@ -31,8 +29,7 @@ class User:
     @classmethod
     def from_dict(cls, dct):
         name = dct['name']
-        subsc_list = dct['subsc_list']
+        subsc_list = [subscriptions.Subscription(item['name'], item['last_issue_num']) for item in dct['subsc_list']]
         return cls(name, subsc_list)
-
 
 
