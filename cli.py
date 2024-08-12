@@ -52,7 +52,7 @@ def get_command(project_name):
             ISSUES_LIST = [issues_list(*item) for item in github.make_issues_list(project_name)]
         except github.ProjectNotFoundError:
             print(f'Project "{project_name}" not found, check your spelling.')
-            ISSUES_LIST = issues_list([])
+            ISSUES_LIST = []
             break
         except github.GithubError as err:
             print(f'Error communicating with Github: {err}')
@@ -154,8 +154,10 @@ def sub_command(project_name=None):
                                    'Try </login> command')
     try:
         ISSUES_LIST = get_command(project_name)    # проверяем все ли так с введенным проектом, есть ненужный принт
-    except github.GithubError as err:
-        print(err)
+        if not ISSUES_LIST:
+            raise github.GithubError
+    except github.GithubError:
+        return
     try:
         USER.add_subsc(project_name)
         database.Database.save_sub(USER)  # просто переписываем весь список подписок юзера заново
@@ -207,11 +209,8 @@ def update_command(since_date=None):
             temp_print_list = []    # собираем все номера непросмотренных исусов подписки для печати
             for issue in temp_list_issues:
                 if date.fromisoformat(issue.created_at) >= date.fromisoformat(since_date):
-                    n = issue.N
                     temp_print_list.append(issue.N)
                     subscription.last_issue_num = issue.N
-                    a = temp_print_list[0]
-                    b = temp_print_list[-1]
             pretty_print_issues(temp_print_list[0]-1, temp_print_list[-1])   # что то там с номерами исусов в печати (особенно с первым)
         database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
