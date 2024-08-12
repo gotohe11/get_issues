@@ -1,6 +1,7 @@
 import sys
 from tabulate import tabulate
 from collections import namedtuple
+from datetime import date
 
 from . import errors
 from . import github
@@ -33,7 +34,9 @@ def help_command():
         '/print N - prints the N-th issue (if there is no N, prints 10 newest issues);\n'
         '/next - prints the next 10 issues or the remainder;\n'
         '/sub <owner>/<repo> - to subscribe to the project;\n'
-        '/unsub <owner>/<repo> - to unsubscribe from the project.'
+        '/unsub <owner>/<repo> - to unsubscribe from the project;\n'
+        '/update - prints issues in all projects you subscribe since the last visit;\n'
+        '/update YYYY-MM-DD - prints issues in all projects you subscribe since the date (ISO-format)'
         )
 
 
@@ -179,6 +182,44 @@ def unsub_command(project_name=None):
 
 
 
+def update_command(since_date=None):
+    """
+    Prints new issues since {since_date} or since last time visit (last_issue_num)
+    """
+    global USER
+    if not USER:
+        raise errors.IncorrectOder('To unsubscribe from a project, you first need to log in. '
+                                   'Try </login> command')
+    if not USER.subsc_list:
+        print('You do not have any subscriptions yet')
+
+    elif USER.subsc_list and not since_date:    # догружаем у каждой подписки все исусы, которые еще не видел юзер
+        for subscription in USER.subsc_list:
+            temp_list_issues = get_command(subscription.name)    # заново грузим весь репозиторий
+            if subscription.last_issue_num < len(temp_list_issues):    # сравниваем с последним просмотренным исусом
+                pretty_print_issues(subscription.last_issue_num, len(temp_list_issues))
+                subscription.last_issue_num = len(temp_list_issues)
+        database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
+
+    elif USER.subsc_list and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
+        for subscription in USER.subsc_list:
+            temp_list_issues = get_command(subscription.name)   # заново грузим весь репозиторий и сравниваем
+            temp_print_list = []    # собираем все номера непросмотренных исусов подписки для печати
+            for issue in temp_list_issues:
+                if date.fromisoformat(issue.created_at) >= date.fromisoformat(since_date):
+                    n = issue.N
+                    temp_print_list.append(issue.N)
+                    subscription.last_issue_num = issue.N
+                    a = temp_print_list[0]
+                    b = temp_print_list[-1]
+            pretty_print_issues(temp_print_list[0]-1, temp_print_list[-1])   # что то там с номерами исусов в печати (особенно с первым)
+        database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
+
+
+    # обработка исключений при новой загрузке репозитория?????
+
+
+
 command_dict = {
     '/help': help_command,
     '/get': get_command,
@@ -187,8 +228,8 @@ command_dict = {
     '/next': next_command,
     '/login': login_command,
     '/sub': sub_command,
-    '/unsub': unsub_command
-
+    '/unsub': unsub_command,
+    '/update': update_command
 }
 
 
@@ -212,6 +253,7 @@ def _run_one(command: str):
         return command_dict[cmd](*args)
     except TypeError:
         raise errors.CommandArgsError('Wrong number of arguments provided.')
+    # вот тут если что то идет не так внутри, то печатается допом еще и эта ошибка
 
 
 def run():
