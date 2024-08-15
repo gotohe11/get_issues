@@ -147,7 +147,7 @@ def next_command():
 
 def login_command(user_name=None):   # имя получилось нечувств к регистру
     if not user_name:
-        raise errors.CommandArgsError('You should text your login-name first')    # тут все ок
+        raise errors.CommandArgsError('You should text your login-name first')
     global USER
     USER = database.Database.load_or_create_user(user_name)
     print(f'Hello, {USER.name}!')
@@ -157,10 +157,10 @@ def login_command(user_name=None):   # имя получилось нечувс�
 def sub_command(project_name=None):
     global USER
     if USER.name == '_no_name':
-        raise errors.IncorrectOder('To subscribe a project, you first need to log in. '    # тут тоже ок
+        raise errors.IncorrectOder('To subscribe a project, you first need to log in. ' 
                                    'Try </login> command')
     if not project_name:
-        raise errors.CommandArgsError('You forgot to text a project name')    # тут тоже ок
+        raise errors.CommandArgsError('You forgot to text a project name')
 
     if USER.last_project and project_name in USER.last_project.name:
         project_obj = USER.last_project
@@ -204,10 +204,10 @@ def update_command(since_date=None):
     """
     global USER
     if USER.name == '_no_name':
-        raise errors.IncorrectOder('To update your projects, you first need to log in. '   # тут все ок
+        raise errors.IncorrectOder('To update your projects, you first need to log in. ' 
                                    'Try </login> command')
     if not USER.subsc_list:
-        print('You do not have any subscriptions yet')     # тут все ок
+        print('You do not have any subscriptions yet')
 
     elif USER.subsc_list and not since_date:    # догружаем у каждой подписки все исусы, которые еще не видел юзер
         for subscription in USER.subsc_list:
@@ -219,6 +219,8 @@ def update_command(since_date=None):
                 pretty_print_issues(temp_list_issues, subscription.last_issue_num, len(temp_list_issues))
                 subscription.issues_list = temp_list_issues
                 subscription.last_issue_num = len(temp_list_issues)
+            else:
+                print(f'There is nothing to update in "{subscription.name}" repository')
         database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
     elif USER.subsc_list and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
@@ -234,11 +236,9 @@ def update_command(since_date=None):
             if numbers_new_issues_list:
                 print(subscription.name + ':')
                 pretty_print_issues(temp_list_issues, numbers_new_issues_list[0] - 1, numbers_new_issues_list[-1])
+            else:
+                print(f'There is nothing to update in "{subscription.name}" repository')
         database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
-
-
-    # обработка исключений при новой загрузке репозитория?????
-
 
 
 command_dict = {
