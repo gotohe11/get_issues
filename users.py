@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-
 from . import subscriptions
 
 
@@ -7,15 +6,14 @@ from . import subscriptions
 class User:
     name: str
     subsc_list: list = field(default_factory=list)
+    last_project: subscriptions.Subscription = field(default=None)    # последний просмотренный проект без подписки
 
 
-    def add_subsc(self, project_name):
+    def add_subsc(self, project_obj):
         res = [item.name for item in self.subsc_list]
-        if project_name in res:
-            raise NameError(f'You have already subscribed to the "{project_name}" repository.')
-        subs_obj = subscriptions.Subscription(project_name)
-        self.subsc_list.append(subs_obj)
-        #print('добавилась подписка')
+        if project_obj.name in res:
+            raise NameError(f'You have already subscribed to the "{project_obj.name}" repository.')
+        self.subsc_list.append(project_obj)
 
 
     def remove_subsc(self, project_name):
@@ -23,13 +21,12 @@ class User:
         if project_name not in res:
             raise NameError(f'You are not subscribed to the "{project_name}" repository.')
         self.subsc_list = [item for item in self.subsc_list if item.name != project_name]
-        #print('удалилась подписка')
 
 
     @classmethod
     def from_dict(cls, dct):
         name = dct['name']
-        subsc_list = [subscriptions.Subscription(item['name'], item['last_issue_num']) for item in dct['subsc_list']]
-        return cls(name, subsc_list)
+        subsc_list = [subscriptions.Subscription(item['name'], item['issues_list'], item['last_issue_num']) for item in dct['subsc_list']]
+        return cls(name, subsc_list)    # без посл просм проекта
 
 
