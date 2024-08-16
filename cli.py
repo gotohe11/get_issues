@@ -65,12 +65,12 @@ def get_command(project_name):
     global USER
 
     if not USER:
-        USER = users.User('_no_name')
+        USER = users.User(None)
 
     issues_list = _get_issues_list_from_github(project_name)
     if issues_list:
         print(f'There are {len(issues_list)} issues in the "{project_name}" repository.'
-              ' Use /sub, /next or /print commands')
+              ' Use /sub, /next or /print commands.')
 
         USER.last_project = subscriptions.Subscription(project_name, issues_list, 0)
 
@@ -81,8 +81,8 @@ def exit_command():
 
 def print_command(issue_number=None):
     global USER
-    if not USER.last_project:
-        raise errors.IncorrectOder('Firstly, try "/get <owner>/<repo>" command')
+    if not USER or not USER.last_project:
+        raise errors.IncorrectOder('Firstly, try "/get <owner>/<repo>" command.')
 
     issues_list = USER.last_project.issues_list
 
@@ -107,20 +107,18 @@ def print_command(issue_number=None):
 
     # замена последнего просмотренного исуса проекта если он в подписках у пользователя
     project_name = issues_list[0].project_name
-    res = [obj.name for obj in USER.subsc_list]
-    if project_name in res:    # если юзер подписан на репо, то меняем последний просмотренный исус
-        for i in range(len(USER.subsc_list)):
-            if USER.subsc_list[i].name == project_name:
-                USER.subsc_list[i].last_issue_num = last_issue_num
-                database.Database.save_sub(USER)     # записываем в файлик
+    if project_name in USER.subs:    # если юзер подписан на репо, то меняем последний просмотренный исус
+        USER.subs[project_name].last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
+                        else len(issues_list)
+        database.Database.save_sub(USER)     # записываем в файлик
 
     return issues_list[skip:skip+limit]
 
 
 def next_command():
     global USER
-    if not USER.last_project:
-        raise errors.IncorrectOder('Firstly, try "/get <owner>/<repo>" command')
+    if not USER or not USER.last_project:
+        raise errors.IncorrectOder('Firstly, try "/get <owner>/<repo>" command.')
 
     issues_list = USER.last_project.issues_list
     num_1 = USER.last_project.last_issue_num
@@ -134,20 +132,17 @@ def next_command():
 
         # замена последнего просмотренного исуса проекта если он в подписках у пользователя
         project_name = issues_list[0].project_name
-        res = [obj.name for obj in USER.subsc_list]
-        if project_name in res:  # если юзер подписан на репо, то меняем последний просмотренный исус
-            for i in range(len(USER.subsc_list)):
-                if USER.subsc_list[i].name == project_name:
-                    USER.subsc_list[i].last_issue_num = num_2 if num_2 <= len(issues_list) \
+        if project_name in USER.subs:  # если юзер подписан на репо, то меняем последний просмотренный исус
+                USER.subs[project_name].last_issue_num = num_2 if num_2 <= len(issues_list) \
                         else len(issues_list)
-                    database.Database.save_sub(USER)  # записываем в файлик
+                database.Database.save_sub(USER)  # записываем в файлик
 
         return issues_list[num_1:num_2]
 
 
 def login_command(user_name=None):   # имя получилось нечувств к регистру
     if not user_name:
-        raise errors.CommandArgsError('You should text your login-name first')
+        raise errors.CommandArgsError('You should text your login-name first.')
     global USER
     USER = database.Database.load_or_create_user(user_name)
     print(f'Hello, {USER.name}!')
@@ -156,13 +151,13 @@ def login_command(user_name=None):   # имя получилось нечувс�
 
 def sub_command(project_name=None):
     global USER
-    if USER.name == '_no_name':
-        raise errors.IncorrectOder('To subscribe a project, you first need to log in. ' 
-                                   'Try </login> command')
+    if not USER or not USER.name:
+        raise errors.IncorrectOder('To subscribe a project, you first need to log in. '
+                                   'Try </login> command.')
     if not project_name:
-        raise errors.CommandArgsError('You forgot to text a project name')
+        raise errors.CommandArgsError('You forgot to text a project name.')
 
-    if USER.last_project and project_name in USER.last_project.name:
+    if USER.last_project and project_name == USER.last_project.name:
         project_obj = USER.last_project
     else:
         try:    # создаем подписку
@@ -183,11 +178,11 @@ def sub_command(project_name=None):
 
 def unsub_command(project_name=None):
     global USER
-    if USER.name == '_no_name':
+    if not USER or not USER.name:
         raise errors.IncorrectOder('To unsubscribe from a project, you first need to log in. '
-                                   'Try </login> command')
+                                   'Try </login> command.')
     if not project_name:
-        raise errors.CommandArgsError('You forgot to text a project name')
+        raise errors.CommandArgsError('You forgot to text a project name.')
 
     try:
         USER.remove_subsc(project_name)    # удаляем ненужную подписку из списка подписок юзера
@@ -203,28 +198,28 @@ def update_command(since_date=None):
     Prints new issues since {since_date} or since last time visit (last_issue_num)
     """
     global USER
-    if USER.name == '_no_name':
-        raise errors.IncorrectOder('To update your projects, you first need to log in. ' 
-                                   'Try </login> command')
-    if not USER.subsc_list:
-        print('You do not have any subscriptions yet')
+    if not USER or not USER.name:
+        raise errors.IncorrectOder('To update your projects, you first need to log in. '
+                                   'Try </login> command.')
+    if not USER.subs:
+        print('You do not have any subscriptions yet.')
 
-    elif USER.subsc_list and not since_date:    # догружаем у каждой подписки все исусы, которые еще не видел юзер
-        for subscription in USER.subsc_list:
+    elif USER.subs and not since_date:    # догружаем у каждой подписки все исусы, которые еще не видел юзер
+        for subs_name, subscription in USER.subs.items():
             temp_list_issues = _get_issues_list_from_github(subscription.name)  # заново грузим весь репозиторий
             if not temp_list_issues:
                 return
             if subscription.last_issue_num < len(temp_list_issues):    # сравниваем с последним просмотренным исусом
-                print(subscription.name + ':')
+                print(subscription.name + ' repository:')
                 pretty_print_issues(temp_list_issues, subscription.last_issue_num, len(temp_list_issues))
                 subscription.issues_list = temp_list_issues
                 subscription.last_issue_num = len(temp_list_issues)
             else:
-                print(f'There is nothing to update in "{subscription.name}" repository')
+                print(f'There is nothing to update in "{subscription.name}" repository.')
         database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
-    elif USER.subsc_list and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
-        for subscription in USER.subsc_list:
+    elif USER.subs and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
+        for subs_name, subscription in USER.subs.items():
             temp_list_issues = _get_issues_list_from_github(subscription.name)  # заново грузим весь репозиторий
             if not temp_list_issues:
                 return
@@ -234,10 +229,10 @@ def update_command(since_date=None):
                     numbers_new_issues_list.append(issue.N)
                     subscription.last_issue_num = issue.N
             if numbers_new_issues_list:
-                print(subscription.name + ':')
-                pretty_print_issues(temp_list_issues, numbers_new_issues_list[0] - 1, numbers_new_issues_list[-1])
+                print(subscription.name + ' repository:')
+                pretty_print_issues(temp_list_issues, numbers_new_issues_list[0]-1, numbers_new_issues_list[-1])
             else:
-                print(f'There is nothing to update in "{subscription.name}" repository')
+                print(f'There is nothing to update in "{subscription.name}" repository.')
         database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
 
@@ -268,7 +263,7 @@ def _run_one(command: str):
         args = []
 
     if cmd not in command_dict:
-        raise errors.CommandNotFound('Command not found')
+        raise errors.CommandNotFound('Command not found.')
 
     try:
         return command_dict[cmd](*args)
