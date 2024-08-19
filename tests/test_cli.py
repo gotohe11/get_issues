@@ -1,13 +1,21 @@
 import pytest
-from .. import cli, errors, github
+from collections import namedtuple
+from .. import cli, errors, github, users, subscriptions
 
 
-TEST_ISSUES = [
+JUST_ISSUES = [
     (1, 'Title #1', '2021-05-06', '2021-05-06', 0),
     (2, 'Title #2', '2021-01-10', '2022-01-14', 5),
     (3, 'Title #3', '2020-12-01', '2021-01-03', 0),
-    (4, 'Title #4', '2020-11-30', '2021-06-07', 11),
+    (4, 'Title #4', '2020-11-30', '2021-06-07', 11)
 ]
+turn_to_namedtuple = namedtuple('issue', ['project_name'] + cli.COLUMNS)
+TEST_ISSUES = [turn_to_namedtuple('test/test', *item) for item in JUST_ISSUES]
+
+TEST_SUB = subscriptions.Subscription('test_subs_name', TEST_ISSUES, 0)
+TEST_USER = users.User(name='test_user', last_project=TEST_SUB)    # юзер, листающий проект
+
+
 
 
 @pytest.fixture()
@@ -32,7 +40,7 @@ def mock_github():
     """
     def _github_mock(project_name: str):
         if project_name == 'test/test':
-            return TEST_ISSUES
+            return JUST_ISSUES
         else:
             raise github.ProjectNotFoundError
 
@@ -42,7 +50,7 @@ def mock_github():
     github.make_issues_list = original_fn
 
 
-@pytest.mark.parametrize('cmd', ['/bad', 'next'])
+@pytest.mark.parametrize('cmd', ['/bad', 'next'])    # +
 def test_missing_command(cmd):
     """ Проверяем, что корректно обрабатывается ввод не существующей команды.
     """
@@ -50,7 +58,7 @@ def test_missing_command(cmd):
         cli._run_one(cmd)
 
 
-def test_case_and_whitespace(command_stub):
+def test_case_and_whitespace(command_stub):    # +
     """ Проверяем, что парсер команд не чувствителен к регистру ввода и лишним
     пробелам.
     """
@@ -58,15 +66,15 @@ def test_case_and_whitespace(command_stub):
     assert list(result) == ['a1', 'a2', 'a3']
 
 
-def test_get_ok(mock_github):
+def test_get_ok(mock_github):    # + fixed
     """ Проверяем основной сценарий выполнения команды /get.
     """
     result = cli._run_one('/get test/test')
-    assert cli.ISSUES_LIST == TEST_ISSUES
+    assert cli.USER.last_project.issues_list == TEST_ISSUES
 
 
 #  #  #
-@pytest.mark.parametrize('cmd', ['/help 1', '/next 2', '/print 3 4'])
+@pytest.mark.parametrize('cmd', ['/help 1', '/next 2', '/print 3 4'])    # +
 def test_wrong_number_of_arguments(cmd):
     """ Проверяем, что корректно обрабатывается ввод команд
     с неправильным количеством аргументов.
@@ -76,71 +84,71 @@ def test_wrong_number_of_arguments(cmd):
 
 
 # print_command_tests
-@pytest.mark.parametrize('num', [1, 2, 3, 4])
+@pytest.mark.parametrize('num', [1, 2, 3, 4])    # + fixed
 def test_print_command_right_num(num):
     """Проверка функции печати с передачей номера тикета
     внутри диапазона имеющихся данных.
     """
-    cli.ISSUES_LIST = TEST_ISSUES
+    cli.USER = TEST_USER
     result = cli.print_command(num)
-    assert result[0] == TEST_ISSUES[num-1]    # надо это как-то покрасивше сделать
+    assert result[0] == TEST_ISSUES[num-1]
 
 
-@pytest.mark.parametrize('num', [-1, 0, 5])
+@pytest.mark.parametrize('num', [-1, 0, 5])    # + fixed
 def test_print_command_wrong_num(num):
     """Проверка функции печати с передачей номера тикета
     вне диапазона имеющихся данных."""
-    cli.ISSUES_LIST = TEST_ISSUES
+    cli.USER = TEST_USER
     with pytest.raises(errors.CommandArgsError):
         cli.print_command(num)
 
 
-@pytest.mark.parametrize('arg', ['suka', 'blyat'])
+@pytest.mark.parametrize('arg', ['siniy', 'traktor'])    # + fixed
 def test_print_command_wrong_arg(arg):
     """Проверка функции печати с передачей строки вместо номера."""
-    cli.ISSUES_LIST = TEST_ISSUES
+    cli.USER = TEST_USER
     with pytest.raises(errors.CommandArgsError):
         cli.print_command(arg)
 
 
-def test_print_command_no_num():
+def test_print_command_no_num():    # + fixed
     """Проверка функции печати без передачи номера тикета.
     По умолчанию функция должна возвращать первые 10 тикетов."""
-    cli.ISSUES_LIST = TEST_ISSUES
+    cli.USER = TEST_USER
     result = cli.print_command(None)
     assert result == TEST_ISSUES[0:10]
 
 
-def test_print_command_wrong_order():
+def test_print_command_wrong_order():    # + fixed
     """Проверка функции печати без предварительного
     вызова команды /get."""
-    cli.ISSUES_LIST = []
+    cli.USER = None
     with pytest.raises(errors.IncorrectOder):
         cli.print_command(1)
 
 
 # next_command_tests
-def test_next_command_right():
+def test_next_command_right():    # + fixed
     """Проверка функции печати последующих 10 тикетов."""
-    cli.ISSUES_LIST = TEST_ISSUES
+    TEST_SUB_2 = subscriptions.Subscription('test_subs_name', TEST_ISSUES, 2)
+    cli.USER = users.User(name='test_user', last_project=TEST_SUB_2)
     test_last_num = 2
-    cli.LAST_ISSUE_NUM = test_last_num
     result = cli.next_command()
     assert result == TEST_ISSUES[test_last_num:test_last_num+10]
 
 
-def test_next_command_wrong_order():
+def test_next_command_wrong_order():    # + fixed
     """Проверка функции печати последующих 10 тикетов
     без предварительного вызова команды /get."""
-    cli.ISSUES_LIST = []
+    cli.USER = None
     with pytest.raises(errors.IncorrectOder):
         cli.next_command()
 
 
-def test_next_command_whole_list():
+def test_next_command_whole_list():    # + fixed
     """Проверка функции печати последующих 10 тикетов,
     когда все тикеты уже были просмотрены пользователем."""
-    cli.ISSUES_LIST = TEST_ISSUES
-    cli.LAST_ISSUE_NUM = len(TEST_ISSUES) + 100
+    TEST_SUB_4 = subscriptions.Subscription('test_subs_name', TEST_ISSUES, 4)
+    cli.USER = users.User(name='test_user', last_project=TEST_SUB_4)
     with pytest.raises(errors.CommandArgsError):
         cli.next_command()

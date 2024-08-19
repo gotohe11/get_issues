@@ -103,7 +103,8 @@ def print_command(issue_number=None):
 
     pretty_print_issues(issues_list, skip, skip+limit)   # печатаем
     last_issue_num = skip + limit
-    USER.last_project.last_issue_num = last_issue_num   # замена последнего просмотренного исуса текущего проекта
+    USER.last_project.last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
+        else len(issues_list)  # замена последнего просмотренного исуса текущего проекта
 
     # замена последнего просмотренного исуса проекта если он в подписках у пользователя
     project_name = issues_list[0].project_name
