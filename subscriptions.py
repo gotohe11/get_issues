@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 class Subscription:
     name: str
     issues_list: list = field(default_factory=list)    # весь список исусов проекта
-    last_issue_num: int = field(default=0)  # последний просмотренный исус у подписки
+    last_issue_num: int = field(default=0, compare=False)  # последний просмотренный исус у подписки
 
 
     @classmethod
