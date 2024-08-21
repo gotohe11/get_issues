@@ -1,5 +1,4 @@
 import pytest
-from collections import namedtuple
 from .. import cli, errors, github, users, subscriptions
 
 
@@ -9,12 +8,10 @@ JUST_ISSUES = [
     (3, 'Title #3', '2020-12-01', '2021-01-03', 0),
     (4, 'Title #4', '2020-11-30', '2021-06-07', 11)
 ]
-turn_to_namedtuple = namedtuple('issue', ['project_name'] + cli.COLUMNS)
-TEST_ISSUES = [turn_to_namedtuple('test/test', *item) for item in JUST_ISSUES]
 
+TEST_ISSUES = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test/test')
 TEST_SUB = subscriptions.Subscription('test_subs_name', TEST_ISSUES, 0)
 TEST_USER = users.User(name='test_user', last_project=TEST_SUB)    # юзер, листающий проект
-
 
 
 

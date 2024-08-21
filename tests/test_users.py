@@ -1,5 +1,4 @@
 import pytest
-from collections import namedtuple
 from .. import cli, users, subscriptions
 
 
@@ -9,8 +8,9 @@ JUST_ISSUES = [
     (3, 'Title #3', '2020-12-01', '2021-01-03', 0),
     (4, 'Title #4', '2020-11-30', '2021-06-07', 11)
 ]
-turn_to_namedtuple = namedtuple('issue', ['project_name'] + cli.COLUMNS)
-TEST_ISSUES = [turn_to_namedtuple('test/test', *item) for item in JUST_ISSUES]   # или можно какую нить другую фигню туда засунуть?
+
+TEST_ISSUES = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test/test')
+
 TEST_SUB_1 = subscriptions.Subscription('sub_name_1', TEST_ISSUES[:2], 0)
 TEST_SUB_2 = subscriptions.Subscription('sub_name_2', TEST_ISSUES[:3], 1)
 TEST_SUB_3 = subscriptions.Subscription('sub_name_3', TEST_ISSUES, 2)

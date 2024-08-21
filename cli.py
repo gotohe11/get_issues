@@ -1,15 +1,10 @@
 import sys
 from tabulate import tabulate
-from collections import namedtuple
 from datetime import date
 
-from . import errors
-from . import github
-from . import users
-from . import subscriptions
-from . import database
+from . import errors, github, users, subscriptions, database
 
-COLUMNS = ['N', 'title', 'created_at', 'updated_at', 'comments']
+
 USER = None    # несет экземпляр класса юзер
 
 
@@ -22,7 +17,7 @@ def pretty_print_issues(res_list, num_start, num_finish=100):
     :return: data table
     """
     temp_lst = [(item[1:]) for item in res_list]
-    print(tabulate(temp_lst[num_start:num_finish], headers=COLUMNS))
+    print(tabulate(temp_lst[num_start:num_finish], headers=subscriptions.COLUMNS))
 
 
 def help_command():
@@ -43,12 +38,11 @@ def help_command():
 
 
 def _get_issues_list_from_github(project_name):
-    issues_list = namedtuple('issue', ['project_name'] + COLUMNS)
-
     success = False
     while not success:
         try:
-            res_list = [issues_list(project_name, *item) for item in github.make_issues_list(project_name)]
+            github_list = github.make_issues_list(project_name)
+            res_list = subscriptions.Subscription.make_named_tuples(github_list, project_name)
         except github.ProjectNotFoundError:
             print(f'Project "{project_name}" not found, check your spelling.')
             res_list = []
@@ -73,6 +67,7 @@ def get_command(project_name):
               ' Use /sub, /next or /print commands.')
 
         USER.last_project = subscriptions.Subscription(project_name, issues_list, 0)
+        return issues_list
 
 
 def exit_command():
@@ -104,7 +99,7 @@ def print_command(issue_number=None):
     pretty_print_issues(issues_list, skip, skip+limit)   # печатаем
     last_issue_num = skip + limit
     USER.last_project.last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
-        else len(issues_list)  # замена последнего просмотренного исуса текущего проекта
+                        else len(issues_list)  # замена последнего просмотренного исуса текущего проекта
 
     # замена последнего просмотренного исуса проекта если он в подписках у пользователя
     project_name = issues_list[0].project_name
@@ -269,7 +264,7 @@ def _run_one(command: str):
     try:
         return command_dict[cmd](*args)
     except TypeError as er:
-        #print(er)
+        print(er)
         raise errors.CommandArgsError('Wrong number of arguments provided.')
 
 
