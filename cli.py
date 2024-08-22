@@ -4,7 +4,7 @@ from datetime import date
 
 from . import errors, github, users, subscriptions, database
 
-
+DB = database.Database()
 USER = None    # несет экземпляр класса юзер
 
 
@@ -106,7 +106,7 @@ def print_command(issue_number=None):
     if project_name in USER.subs:    # если юзер подписан на репо, то меняем последний просмотренный исус
         USER.subs[project_name].last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
                         else len(issues_list)
-        database.Database.save_sub(USER)     # записываем в файлик
+        DB.save_sub(USER)     # записываем в файлик
 
     return issues_list[skip:skip+limit]
 
@@ -131,7 +131,7 @@ def next_command():
         if project_name in USER.subs:  # если юзер подписан на репо, то меняем последний просмотренный исус
                 USER.subs[project_name].last_issue_num = num_2 if num_2 <= len(issues_list) \
                         else len(issues_list)
-                database.Database.save_sub(USER)  # записываем в файлик
+                DB.save_sub(USER)  # записываем в файлик
 
         return issues_list[num_1:num_2]
 
@@ -140,7 +140,7 @@ def login_command(user_name=None):   # имя получилось нечувс�
     if not user_name:
         raise errors.CommandArgsError('You should text your login-name first.')
     global USER
-    USER = database.Database.load_or_create_user(user_name)
+    USER = DB.load_or_create_user(user_name)
     print(f'Hello, {USER.name}!')
 
 
@@ -165,7 +165,7 @@ def sub_command(project_name=None):
             return
     try:
         USER.add_subsc(project_obj)
-        database.Database.save_sub(USER)  # просто переписываем весь список подписок юзера заново
+        DB.save_sub(USER)  # просто переписываем весь список подписок юзера заново
         print(f'{USER.name}, you subscribed to "{project_name}" repository.')
     except NameError as er:
         print(er)
@@ -182,7 +182,7 @@ def unsub_command(project_name=None):
 
     try:
         USER.remove_subsc(project_name)    # удаляем ненужную подписку из списка подписок юзера
-        database.Database.save_sub(USER)   # просто переписываем весь список подписок Юзера заново
+        DB.save_sub(USER)   # просто переписываем весь список подписок Юзера заново
         print(f'{USER.name}, you unsubscribed from the "{project_name}" repository.')
     except NameError as er:
         print(er)
@@ -212,7 +212,7 @@ def update_command(since_date=None):
                 subscription.last_issue_num = len(temp_list_issues)
             else:
                 print(f'There is nothing to update in "{subscription.name}" repository.')
-        database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
+        DB.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
     elif USER.subs and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
         for subs_name, subscription in USER.subs.items():
@@ -229,7 +229,7 @@ def update_command(since_date=None):
                 pretty_print_issues(temp_list_issues, numbers_new_issues_list[0]-1, numbers_new_issues_list[-1])
             else:
                 print(f'There is nothing to update in "{subscription.name}" repository.')
-        database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
+        DB.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
 
 command_dict = {
