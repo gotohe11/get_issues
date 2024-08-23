@@ -1,5 +1,5 @@
 import pytest
-from .. import cli, errors, github, users, subscriptions
+from .. import cli, errors, github, database, users, subscriptions
 
 
 JUST_ISSUES = [
@@ -13,6 +13,15 @@ TEST_ISSUES = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test/te
 TEST_SUB = subscriptions.Subscription('test_subs_name', TEST_ISSUES, 0)
 TEST_USER = users.User(name='test_user', last_project=TEST_SUB)    # юзер, листающий проект
 
+test_issues_1 = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test_1/test_1')
+TEST_SUB_1 = subscriptions.Subscription('test_1/test_1', test_issues_1, 0)    # ожидаемая подписка 1
+test_issues_2 = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test_2/test_2')
+TEST_SUB_2 = subscriptions.Subscription('test_2/test_2', test_issues_2, 0)  # ожидаемая подписка 2
+
+TEST_USER_1 = users.User(name='test_user_1', subs={TEST_SUB_1.name: TEST_SUB_1})    # юзер с одной подпиской
+TEST_USER_2 = users.User(name='test_user_1', subs={TEST_SUB_1.name: TEST_SUB_1, TEST_SUB_2.name: TEST_SUB_2})   # юзер с 2мя подписками
+
+TEST_DB = DB = database.Database('/tmp/test_data_cli.json')
 
 
 @pytest.fixture()
@@ -36,7 +45,7 @@ def mock_github():
     """ Вешаем заглушку на Github API.
     """
     def _github_mock(project_name: str):
-        if project_name == 'test/test':
+        if project_name in ['test/test', 'test_1/test_1', 'test_2/test_2']:
             return JUST_ISSUES
         else:
             raise github.ProjectNotFoundError
@@ -149,3 +158,102 @@ def test_next_command_whole_list():    # + fixed
     cli.USER = users.User(name='test_user', last_project=TEST_SUB_4)
     with pytest.raises(errors.CommandArgsError):
         cli.next_command()
+
+
+
+### login_command_tests
+def test_login_command_with_no_name():
+    """Проверка функции регистрации пользователя
+    без передачи имени пользователя"""
+    with pytest.raises(errors.CommandArgsError):
+        cli.login_command()
+
+
+@pytest.mark.parametrize('arg', ['test_user_1', 'test_user_2', 'test_user_3'])
+def test_login_command_right(arg):
+    """Проверка функции login пользователя"""
+    test_user = users.User(arg)
+    cli.DB = TEST_DB
+    res = cli.login_command(arg)
+    assert res == test_user
+
+
+# sub_command_tests работают только с зарегаными юзерами (поэтому сначала надо прогнать тесты login)
+def test_sub_command_with_no_user():
+    """Проверка функции подписки пользователя на репозиторий
+    без предварительной регистрации пользователя"""
+    with pytest.raises(errors.IncorrectOder):
+        cli.USER = None
+        cli.sub_command()
+
+
+def test_sub_command_with_no_name():
+    """Проверка функции подписки пользователя на репозиторий
+    без передачи имени проекта"""
+    with pytest.raises(errors.CommandArgsError):
+        cli.USER = TEST_USER
+        cli.sub_command()
+
+
+def test_sub_command_right_one(mock_github):
+    """Проверка функции подписки на репозиторий у нового пользователя"""
+    cli.USER = users.User(name='test_user_1')
+    cli.DB = TEST_DB
+    cli.sub_command('test_1/test_1')   # добавляем новому пользователю 1 подписку
+    assert TEST_USER_1 == cli.USER    # сравниваем результат с пользователем с 1й ожидаемой подпиской
+
+
+def test_sub_command_right_two(mock_github):
+    """Проверка функции подписки на репозиторий у пользователя с подпиской"""
+    cli.USER = TEST_USER_1
+    cli.DB = TEST_DB
+    cli.sub_command('test_2/test_2')   # добавляем пользователю еще 1 подписку
+    assert TEST_USER_2 == cli.USER    # сравниваем результат с пользователем с ожидаемыми подписками
+
+# проверка наличия проекта в подписках совершается в модуле User
+
+
+# unsub_command_tests работают только с зарегаными юзерами (поэтому сначала надо прогнать тесты login)
+def test_unsub_command_with_no_user():
+    """Проверка функции отписки пользователя от репозитория
+    без предварительной регистрации пользователя"""
+    with pytest.raises(errors.IncorrectOder):
+        cli.USER = None
+        cli.unsub_command()
+
+
+def test_unsub_command_with_no_name():
+    """Проверка функции отписки пользователя от репозитория
+    без передачи имени проекта"""
+    with pytest.raises(errors.CommandArgsError):
+        cli.USER = TEST_USER
+        cli.unsub_command()
+
+
+def test_unsub_command_right_two(mock_github):
+    """Проверка функции отписки от репозитория у пользователя с 2мя подписками"""
+    cli.USER = TEST_USER_1    # у него в файле уже 2 подписки после предыдущих тестов
+    cli.DB = TEST_DB
+    cli.unsub_command('test_2/test_2')   # удаляем пользователю 1 подписку
+    assert TEST_USER_1 == cli.USER    # сравниваем результат с пользователем с 1й ожидаемой подпиской
+
+
+def test_unsub_command_right_one(mock_github):    # !!!!
+    """Проверка функции отписки от репозитория у пользователя с 2мя подписками"""
+    cli.USER = TEST_USER_1    # у него в файле уже 1 подписки после предыдущих тестов
+    cli.DB = TEST_DB
+    cli.unsub_command('test_1/test_1')   # удаляем пользователю 2ю подписку
+    test_user_0 = users.User(name='test_user_1')
+    assert test_user_0 == cli.USER    # сравниваем результат с пользователем без подписок
+
+
+# update_command_tests работают только с зарегаными юзерами (поэтому сначала надо прогнать тесты login)
+def test_update_command_with_no_user():
+    """Проверка функции отписки пользователя от репозитория
+    без предварительной регистрации пользователя"""
+    with pytest.raises(errors.IncorrectOder):
+        cli.USER = None
+        cli.update_command()
+
+
+# в конце надо не забыть удалить файл

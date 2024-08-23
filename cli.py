@@ -142,6 +142,7 @@ def login_command(user_name=None):   # имя получилось нечувс�
     global USER
     USER = DB.load_or_create_user(user_name)
     print(f'Hello, {USER.name}!')
+    return USER
 
 
 
