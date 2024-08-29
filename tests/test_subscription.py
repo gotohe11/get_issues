@@ -1,54 +1,67 @@
 import pytest
-from collections import namedtuple
+import json
 from .. import subscriptions
 
 
-JUST_ISSUES = [
+TEST_ISSUES = [
     (1, 'Title #1', '2021-05-06', '2021-05-06', 0),
-    (2, 'Title #2', '2021-01-10', '2022-01-14', 5)
+    (2, 'Title #2', '2021-01-10', '2022-01-14', 5),
+    (3, 'Title #3', '2020-12-01', '2021-01-03', 0),
+    (4, 'Title #4', '2020-11-30', '2021-06-07', 11)
 ]
 
+@pytest.mark.usefixtures('tmp_db', 'clean_file')
+class TestSubscription():
+    def _dump_sub(self, sub_obj):
+        '''Записывает подписку (экземпляр класса Subscription)
+        во временную БД в виде словаря'''
+        data = sub_obj.__dict__
+        with open(self.db.path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=2)
 
-TEST_DATA = {
-    "name": "sub_name_1",
-    "issues_list": [
-        [
-            "test/test",
-            1,
-            "Title #1",
-            "2021-05-06",
-            "2021-05-06",
-            0
-        ],
-        [
-            "test/test",
-            2,
-            "Title #2",
-            "2021-01-10",
-            "2022-01-14",
-            5
-        ]
-    ],
-    "last_issue_num": 0
-}
+    def _read_db(self):
+        '''Считывает данные БД.'''
+        with open(self.db.path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        return data
 
 
-
-def test_from_dict():
-    """Проверяем десереализацию подписки"""
-    sub_from_data = subscriptions.Subscription.from_dict(TEST_DATA)
-    test_issues = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test/test')
-    test_sub = subscriptions.Subscription('sub_name_1', test_issues)
-    assert sub_from_data == test_sub
-
-
-def test_make_named_tuples():
-    """Проверяем создание named tuple из списков"""
-    turn_to_namedtuple = namedtuple('issue', ['project_name'] + subscriptions.COLUMNS)
-    list_for_compare = [turn_to_namedtuple('test/test', *item) for item in JUST_ISSUES]
-    test_issues = subscriptions.Subscription.make_named_tuples(JUST_ISSUES, 'test/test')
-    assert test_issues == list_for_compare
+    def test_from_dict(self):
+        """Проверяем десереализацию подписки"""
+        test_sub = subscriptions.Subscription(name='test/test', issues_list=TEST_ISSUES,
+                                              last_issue_num=2)    # создаем подписку
+        self._dump_sub(test_sub)    # записываем подписку в файл
+        test_data = self._read_db()    # считываем данные из файла
+        sub_from_db = subscriptions.Subscription.from_dict(test_data)   # отправляем в тестируемую ф-ию
+        assert sub_from_db.name == 'test/test'   # сравниваем с ожидаемым результатом
+        assert sub_from_db.issues_list == TEST_ISSUES
+        assert sub_from_db.last_issue_num == 2
 
 
+    def test_read_issues(self):
+        ''' Проверяем изменение последнего просмотренного тикета у подписки
+        на номер внутри разрешимого диапазона'''
+        test_sub = subscriptions.Subscription(name='test/test', issues_list=TEST_ISSUES,
+                                              last_issue_num=2)  # создаем подписку
+        test_sub.read_issues(3)    # меняем просмотренный исус в тестируемой ф-ии
+        self._dump_sub(test_sub)  # записываем подписку в файл
+        test_data = self._read_db()  # считываем данные из файла
+        assert test_data['name'] == 'test/test'  # сравниваем с ожидаемым результатом
+        assert test_data['issues_list'] == [list(item) for item in TEST_ISSUES]
+        assert test_data['last_issue_num'] == 3
+
+
+
+    def test_read_issues_big_num(self):
+        ''' Проверяем изменение последнего просмотренного тикета у подписки
+        на номер вне разрешимого диапазона чисел'''
+        test_sub = subscriptions.Subscription(name='test/test', issues_list=TEST_ISSUES,
+                                              last_issue_num=2)  # создаем подписку
+        test_sub.read_issues(100)    # меняем просмотренный исус в тестируемой ф-ии
+        self._dump_sub(test_sub)  # записываем подписку в файл
+        test_data = self._read_db()  # считываем данные из файла
+        assert test_data['name'] == 'test/test'  # сравниваем с ожидаемым результатом
+        assert test_data['issues_list'] == [list(item) for item in TEST_ISSUES]
+        assert test_data['last_issue_num'] == len(TEST_ISSUES)
 
 

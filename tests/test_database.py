@@ -3,15 +3,15 @@ import json
 from .. import users, subscriptions, database
 
 
-JUST_ISSUES = [
+TEST_ISSUES = [
     (1, 'Title #1', '2021-05-06', '2021-05-06', 0),
     (2, 'Title #2', '2021-01-10', '2022-01-14', 5),
     (3, 'Title #3', '2020-12-01', '2021-01-03', 0),
     (4, 'Title #4', '2020-11-30', '2021-06-07', 11)
 ]
 
-TEST_SUB_1 = subscriptions.Subscription('sub_name_1', JUST_ISSUES, 1)
-TEST_SUB_2 = subscriptions.Subscription('sub_name_2', JUST_ISSUES[:3], 2)
+TEST_SUB_1 = subscriptions.Subscription('sub_name_1', TEST_ISSUES, 1)
+TEST_SUB_2 = subscriptions.Subscription('sub_name_2', TEST_ISSUES[:3], 2)
 
 
 @pytest.mark.usefixtures('tmp_db', 'clean_file')
@@ -23,7 +23,7 @@ class TestDataBase():
         return data
 
     def _dump_user(self, user_name):
-        '''Записывает юзера с заданным именем в БД.'''
+        '''Записывает нового юзера с заданным именем в БД.'''
         data = {user_name: {"name": user_name, "subs": {}, "last_project": None}}
         with open(self.db.path, 'w', encoding='utf-8') as file:
             json.dump(data, file, indent=2)
@@ -34,7 +34,7 @@ class TestDataBase():
         self.db.load_or_create_user("test_user_1")    # создает нового юзера и записывает его в файл
         test_data = self._read_db()    # считываем файл
         assert len(test_data) == 1    # убеждаемся что он такой один и неповторимый
-        test_user = list(test_data.values())[0]
+        test_user = test_data['test_user_1']
         assert test_user['name'] == "test_user_1"
         assert test_user['subs'] == {}
         assert test_user['last_project'] == None
@@ -46,7 +46,7 @@ class TestDataBase():
         self.db.load_or_create_user("test_user_1")    # считываем юзера
         test_data = self._read_db()    # считываем файл
         assert len(test_data) == 1    # убеждаемся что он такой один и неповторимый
-        test_user = list(test_data.values())[0]
+        test_user = test_data['test_user_1']
         assert test_user['name'] == "test_user_1"
         assert test_user['subs'] == {}
         assert test_user['last_project'] == None
@@ -59,7 +59,7 @@ class TestDataBase():
 
         test_data = self._read_db()    # считываем файл
         assert len(test_data) == 1
-        test_user = list(test_data.values())[0]
+        test_user = test_data['test_user_1']
         assert test_user['name'] == "test_user_1"
         assert test_user['subs'] == {}
         assert test_user['last_project'] == None
@@ -73,7 +73,7 @@ class TestDataBase():
 
         test_data = self._read_db()  # считываем файл и убеждаемся в том, что он один и без подписок
         assert len(test_data) == 1
-        test_user = list(test_data.values())[0]
+        test_user = test_data['test_user_1']
         assert test_user['name'] == "test_user_1"
         assert test_user['subs'] == {}
 
@@ -82,12 +82,12 @@ class TestDataBase():
 
         # считываем файл и убеждаемся в том, что юзер тот же, он один и с ожидаемой подпиской
         test_data_new = self._read_db()
-        assert len(test_data) == 1
-        test_user_with_sub = list(test_data_new.values())[0]
+        assert len(test_data_new) == 1
+        test_user_with_sub = test_data_new['test_user_1']
         assert test_user_with_sub['name'] == "test_user_1"
         assert len(test_user_with_sub['subs']) == 1
         assert 'sub_name_1' in test_user_with_sub['subs']
-        assert test_user_with_sub['subs']['sub_name_1']['issues_list'] == [list(item) for item in JUST_ISSUES]
+        assert test_user_with_sub['subs']['sub_name_1']['issues_list'] == [list(item) for item in TEST_ISSUES]
         assert test_user_with_sub['subs']['sub_name_1']['last_issue_num'] == 1
 
 
@@ -101,11 +101,11 @@ class TestDataBase():
 
         test_data = self._read_db()  # считываем файл и убеждаемся в том, что он один и с 1й подпиской
         assert len(test_data) == 1
-        test_user_with_sub = list(test_data.values())[0]
+        test_user_with_sub = test_data['test_user_1']
         assert test_user_with_sub['name'] == "test_user_1"
         assert len(test_user_with_sub['subs']) == 1
         assert 'sub_name_1' in test_user_with_sub['subs']
-        assert test_user_with_sub['subs']['sub_name_1']['issues_list'] == [list(item) for item in JUST_ISSUES]
+        assert test_user_with_sub['subs']['sub_name_1']['issues_list'] == [list(item) for item in TEST_ISSUES]
         assert test_user_with_sub['subs']['sub_name_1']['last_issue_num'] == 1
 
         test_user_1.add_subsc(TEST_SUB_2)  # добавляем подписку нашему юзеру
@@ -114,11 +114,11 @@ class TestDataBase():
         # считываем файл и убеждаемся в том, что юзер тот же, он один и с ожидаемыми 2мя подписками
         test_data_new = self._read_db()
         assert len(test_data) == 1
-        test_user_with_sub = list(test_data_new.values())[0]
+        test_user_with_sub = test_data_new['test_user_1']
         assert test_user_with_sub['name'] == "test_user_1"
         assert len(test_user_with_sub['subs']) == 2
         assert 'sub_name_1' in test_user_with_sub['subs'] and 'sub_name_2' in test_user_with_sub['subs']
-        assert test_user_with_sub['subs']['sub_name_1']['issues_list'] == [list(item) for item in JUST_ISSUES]
+        assert test_user_with_sub['subs']['sub_name_1']['issues_list'] == [list(item) for item in TEST_ISSUES]
         assert test_user_with_sub['subs']['sub_name_1']['last_issue_num'] == 1
-        assert test_user_with_sub['subs']['sub_name_2']['issues_list'] == [list(item) for item in JUST_ISSUES[:3]]
+        assert test_user_with_sub['subs']['sub_name_2']['issues_list'] == [list(item) for item in TEST_ISSUES[:3]]
         assert test_user_with_sub['subs']['sub_name_2']['last_issue_num'] == 2

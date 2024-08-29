@@ -16,9 +16,9 @@ class Database:
                 data = json.load(file)
         except FileNotFoundError:
             with open(self.path, 'w', encoding='utf-8') as file:
-                data = {"vasya": {"name": "vasya", "subs": {}, "last_project": None}}  # без предварительной записи каких-либо данных ничего не работало
+                data = {}
                 json.dump(data, file, indent=2)
-        if user_name in data:
+        if data and user_name in data:
             user = users.User.from_dict(data[user_name])
         else:
             user = users.User(user_name)

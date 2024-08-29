@@ -7,7 +7,6 @@ from . import errors, github, users, subscriptions, database
 DB = database.Database()
 USER = None    # несет экземпляр класса юзер
 
-
 def pretty_print_issues(res_list, num_start, num_finish=100):
     """
     Prints a list of issues sorted by creation date (by default),
@@ -16,8 +15,8 @@ def pretty_print_issues(res_list, num_start, num_finish=100):
     :param num_finish: required number of issues
     :return: data table
     """
-    temp_lst = [(item[1:]) for item in res_list]
-    print(tabulate(temp_lst[num_start:num_finish], headers=subscriptions.COLUMNS))
+    columns = ['N', 'title', 'created_at', 'updated_at', 'comments']
+    print(tabulate(res_list[num_start:num_finish], headers=columns))
 
 
 def help_command():
@@ -41,8 +40,7 @@ def _get_issues_list_from_github(project_name):
     success = False
     while not success:
         try:
-            github_list = github.make_issues_list(project_name)
-            res_list = subscriptions.Subscription.make_named_tuples(github_list, project_name)
+            issues_list = github.make_issues_list(project_name)
         except github.ProjectNotFoundError:
             print(f'Project "{project_name}" not found, check your spelling.')
             res_list = []
@@ -51,7 +49,7 @@ def _get_issues_list_from_github(project_name):
             print(f'Error communicating with Github: {err}')
             break
         success = True
-        return res_list
+        return issues_list
 
 
 
@@ -97,15 +95,12 @@ def print_command(issue_number=None):
 
 
     pretty_print_issues(issues_list, skip, skip+limit)   # печатаем
-    last_issue_num = skip + limit
-    USER.last_project.last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
-                        else len(issues_list)  # замена последнего просмотренного исуса текущего проекта
+    USER.last_project.read_issues(skip+limit)  # замена последнего просмотренного исуса текущего проекта
 
     # замена последнего просмотренного исуса проекта если он в подписках у пользователя
-    project_name = issues_list[0].project_name
+    project_name = USER.last_project.name
     if project_name in USER.subs:    # если юзер подписан на репо, то меняем последний просмотренный исус
-        USER.subs[project_name].last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
-                        else len(issues_list)
+        USER.subs[project_name].read_issues(skip+limit)
         DB.save_sub(USER)     # записываем в файлик
 
     return issues_list[skip:skip+limit]
@@ -123,14 +118,12 @@ def next_command():
         raise errors.CommandArgsError('You have seen the whole issues list.')
     else:
         pretty_print_issues(issues_list, num_1, num_2)
-        # замена последнего просмотренного исуса текущего проекта
-        USER.last_project.last_issue_num = num_2 if num_2 <= len(issues_list) else len(issues_list)
+        USER.last_project.read_issues(num_2)    # замена последнего просмотренного исуса текущего проекта
 
         # замена последнего просмотренного исуса проекта если он в подписках у пользователя
-        project_name = issues_list[0].project_name
+        project_name = USER.last_project.name
         if project_name in USER.subs:  # если юзер подписан на репо, то меняем последний просмотренный исус
-                USER.subs[project_name].last_issue_num = num_2 if num_2 <= len(issues_list) \
-                        else len(issues_list)
+                USER.subs[project_name].read_issues(num_2)
                 DB.save_sub(USER)  # записываем в файлик
 
         return issues_list[num_1:num_2]
@@ -222,9 +215,10 @@ def update_command(since_date=None):
                 return
             numbers_new_issues_list = []    # собираем все номера непросмотренных исусов подписки для печати
             for issue in temp_list_issues:
-                if date.fromisoformat(issue.created_at) >= date.fromisoformat(since_date):
-                    numbers_new_issues_list.append(issue.N)
-                    subscription.last_issue_num = issue.N
+                # issue[2] = issue's created_at data
+                if date.fromisoformat(issue[2]) >= date.fromisoformat(since_date):
+                    numbers_new_issues_list.append(issue[0])    # issue[0] = issue's N
+                    subscription.last_issue_num = issue[0]
             if numbers_new_issues_list:
                 print(subscription.name + ' repository:')
                 pretty_print_issues(temp_list_issues, numbers_new_issues_list[0]-1, numbers_new_issues_list[-1])

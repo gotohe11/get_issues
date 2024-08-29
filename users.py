@@ -26,9 +26,7 @@ class User:
     def from_dict(cls, dct):
         name = dct['name']
         subs = {
-            k: subscriptions.Subscription(v['name'],
-                                          subscriptions.Subscription.make_named_tuples(v['issues_list']),
-                                          v['last_issue_num'])
+            k: subscriptions.Subscription.from_dict(v)
             for k, v in dct['subs'].items()
         }
         return cls(name, subs)    # без посл просм проекта
