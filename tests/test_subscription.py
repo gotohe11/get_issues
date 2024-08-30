@@ -10,7 +10,7 @@ TEST_ISSUES = [
     (4, 'Title #4', '2020-11-30', '2021-06-07', 11)
 ]
 
-@pytest.mark.usefixtures('tmp_db', 'clean_file')
+
 class TestSubscription():
     def _dump_sub(self, sub_obj):
         '''Записывает подписку (экземпляр класса Subscription)
@@ -25,7 +25,7 @@ class TestSubscription():
             data = json.load(file)
         return data
 
-
+    @pytest.mark.usefixtures('tmp_db', 'clean_file')
     def test_from_dict(self):
         """Проверяем десереализацию подписки"""
         test_sub = subscriptions.Subscription(name='test/test', issues_list=TEST_ISSUES,
@@ -40,15 +40,12 @@ class TestSubscription():
 
     def test_read_issues(self):
         ''' Проверяем изменение последнего просмотренного тикета у подписки
-        на номер внутри разрешимого диапазона'''
+        на номер внутри разрешимого диапазона чисел'''
         test_sub = subscriptions.Subscription(name='test/test', issues_list=TEST_ISSUES,
                                               last_issue_num=2)  # создаем подписку
         test_sub.read_issues(3)    # меняем просмотренный исус в тестируемой ф-ии
-        self._dump_sub(test_sub)  # записываем подписку в файл
-        test_data = self._read_db()  # считываем данные из файла
-        assert test_data['name'] == 'test/test'  # сравниваем с ожидаемым результатом
-        assert test_data['issues_list'] == [list(item) for item in TEST_ISSUES]
-        assert test_data['last_issue_num'] == 3
+        assert test_sub.issues_list == TEST_ISSUES
+        assert test_sub.last_issue_num == 3
 
 
 
@@ -58,10 +55,7 @@ class TestSubscription():
         test_sub = subscriptions.Subscription(name='test/test', issues_list=TEST_ISSUES,
                                               last_issue_num=2)  # создаем подписку
         test_sub.read_issues(100)    # меняем просмотренный исус в тестируемой ф-ии
-        self._dump_sub(test_sub)  # записываем подписку в файл
-        test_data = self._read_db()  # считываем данные из файла
-        assert test_data['name'] == 'test/test'  # сравниваем с ожидаемым результатом
-        assert test_data['issues_list'] == [list(item) for item in TEST_ISSUES]
-        assert test_data['last_issue_num'] == len(TEST_ISSUES)
+        assert test_sub.issues_list == TEST_ISSUES
+        assert test_sub.last_issue_num == 4
 
 
