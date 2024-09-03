@@ -4,7 +4,7 @@ from datetime import date
 
 from . import errors, github, users, subscriptions, database
 
-DB = database.Database()
+DB = database.Database()   # класс ДБ, путь сохранение - по умолчанию
 USER = None    # несет экземпляр класса юзер
 
 def pretty_print_issues(res_list, num_start, num_finish=100):
@@ -26,6 +26,7 @@ def help_command():
         '/exit - exit;\n'
         '/get <owner>/<repo> (for example, "/get s0md3v/Photon") - '
         'gets repo issues list and prints the amount of them;\n'
+        '/login <user_name> - login or create new account (user_name is case-insensitive);\n'
         '/print N - prints the N-th issue (if there is no N, prints 10 newest issues);\n'
         '/next - prints the next 10 issues or the remainder;\n'
         '/sub <owner>/<repo> - to subscribe to the project;\n'
@@ -209,6 +210,11 @@ def update_command(since_date=None):
         DB.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
     elif USER.subs and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
+        try:
+            date.fromisoformat(since_date)
+        except ValueError as er:
+            print('Invalid isoformat string. Try again.')
+            return
         for subs_name, subscription in USER.subs.items():
             temp_list_issues = _get_issues_list_from_github(subscription.name)  # заново грузим весь репозиторий
             if not temp_list_issues:
@@ -270,6 +276,8 @@ def run():
     """
     while True:
         user_command = ask_user()
+        if not user_command:
+            continue
         try:
             _run_one(user_command)
         except errors.CommandError as exc:
