@@ -1,17 +1,11 @@
 import sys
 from tabulate import tabulate
-from collections import namedtuple
 from datetime import date
 
-from . import errors
-from . import github
-from . import users
-from . import subscriptions
-from . import database
+from . import errors, github, users, subscriptions, database
 
-COLUMNS = ['N', 'title', 'created_at', 'updated_at', 'comments']
+DB = database.Database()   # класс ДБ, путь сохранение - по умолчанию
 USER = None    # несет экземпляр класса юзер
-
 
 def pretty_print_issues(res_list, num_start, num_finish=100):
     """
@@ -21,8 +15,8 @@ def pretty_print_issues(res_list, num_start, num_finish=100):
     :param num_finish: required number of issues
     :return: data table
     """
-    temp_lst = [(item[1:]) for item in res_list]
-    print(tabulate(temp_lst[num_start:num_finish], headers=COLUMNS))
+    columns = ['N', 'title', 'created_at', 'updated_at', 'comments']
+    print(tabulate(res_list[num_start:num_finish], headers=columns))
 
 
 def help_command():
@@ -32,6 +26,7 @@ def help_command():
         '/exit - exit;\n'
         '/get <owner>/<repo> (for example, "/get s0md3v/Photon") - '
         'gets repo issues list and prints the amount of them;\n'
+        '/login <user_name> - login or create new account (user_name is case-insensitive);\n'
         '/print N - prints the N-th issue (if there is no N, prints 10 newest issues);\n'
         '/next - prints the next 10 issues or the remainder;\n'
         '/sub <owner>/<repo> - to subscribe to the project;\n'
@@ -43,12 +38,10 @@ def help_command():
 
 
 def _get_issues_list_from_github(project_name):
-    issues_list = namedtuple('issue', ['project_name'] + COLUMNS)
-
     success = False
     while not success:
         try:
-            res_list = [issues_list(project_name, *item) for item in github.make_issues_list(project_name)]
+            issues_list = github.make_issues_list(project_name)
         except github.ProjectNotFoundError:
             print(f'Project "{project_name}" not found, check your spelling.')
             res_list = []
@@ -57,7 +50,7 @@ def _get_issues_list_from_github(project_name):
             print(f'Error communicating with Github: {err}')
             break
         success = True
-        return res_list
+        return issues_list
 
 
 
@@ -73,6 +66,7 @@ def get_command(project_name):
               ' Use /sub, /next or /print commands.')
 
         USER.last_project = subscriptions.Subscription(project_name, issues_list, 0)
+        return issues_list
 
 
 def exit_command():
@@ -102,15 +96,13 @@ def print_command(issue_number=None):
 
 
     pretty_print_issues(issues_list, skip, skip+limit)   # печатаем
-    last_issue_num = skip + limit
-    USER.last_project.last_issue_num = last_issue_num   # замена последнего просмотренного исуса текущего проекта
+    USER.last_project.read_issues(skip+limit)  # замена последнего просмотренного исуса текущего проекта
 
     # замена последнего просмотренного исуса проекта если он в подписках у пользователя
-    project_name = issues_list[0].project_name
+    project_name = USER.last_project.name
     if project_name in USER.subs:    # если юзер подписан на репо, то меняем последний просмотренный исус
-        USER.subs[project_name].last_issue_num = last_issue_num if last_issue_num <= len(issues_list) \
-                        else len(issues_list)
-        database.Database.save_sub(USER)     # записываем в файлик
+        USER.subs[project_name].read_issues(skip+limit)
+        DB.save_sub(USER)     # записываем в файлик
 
     return issues_list[skip:skip+limit]
 
@@ -127,15 +119,13 @@ def next_command():
         raise errors.CommandArgsError('You have seen the whole issues list.')
     else:
         pretty_print_issues(issues_list, num_1, num_2)
-        # замена последнего просмотренного исуса текущего проекта
-        USER.last_project.last_issue_num = num_2 if num_2 <= len(issues_list) else len(issues_list)
+        USER.last_project.read_issues(num_2)    # замена последнего просмотренного исуса текущего проекта
 
         # замена последнего просмотренного исуса проекта если он в подписках у пользователя
-        project_name = issues_list[0].project_name
+        project_name = USER.last_project.name
         if project_name in USER.subs:  # если юзер подписан на репо, то меняем последний просмотренный исус
-                USER.subs[project_name].last_issue_num = num_2 if num_2 <= len(issues_list) \
-                        else len(issues_list)
-                database.Database.save_sub(USER)  # записываем в файлик
+                USER.subs[project_name].read_issues(num_2)
+                DB.save_sub(USER)  # записываем в файлик
 
         return issues_list[num_1:num_2]
 
@@ -144,8 +134,9 @@ def login_command(user_name=None):   # имя получилось нечувс�
     if not user_name:
         raise errors.CommandArgsError('You should text your login-name first.')
     global USER
-    USER = database.Database.load_or_create_user(user_name)
+    USER = DB.load_or_create_user(user_name)
     print(f'Hello, {USER.name}!')
+    return USER
 
 
 
@@ -169,7 +160,7 @@ def sub_command(project_name=None):
             return
     try:
         USER.add_subsc(project_obj)
-        database.Database.save_sub(USER)  # просто переписываем весь список подписок юзера заново
+        DB.save_sub(USER)  # просто переписываем весь список подписок юзера заново
         print(f'{USER.name}, you subscribed to "{project_name}" repository.')
     except NameError as er:
         print(er)
@@ -186,7 +177,7 @@ def unsub_command(project_name=None):
 
     try:
         USER.remove_subsc(project_name)    # удаляем ненужную подписку из списка подписок юзера
-        database.Database.save_sub(USER)   # просто переписываем весь список подписок Юзера заново
+        DB.save_sub(USER)   # просто переписываем весь список подписок Юзера заново
         print(f'{USER.name}, you unsubscribed from the "{project_name}" repository.')
     except NameError as er:
         print(er)
@@ -216,24 +207,30 @@ def update_command(since_date=None):
                 subscription.last_issue_num = len(temp_list_issues)
             else:
                 print(f'There is nothing to update in "{subscription.name}" repository.')
-        database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
+        DB.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
     elif USER.subs and since_date:   # догружаем у каждой подписки все исусы позже указанной даты
+        try:
+            date.fromisoformat(since_date)
+        except ValueError as er:
+            print('Invalid isoformat string. Try again.')
+            return
         for subs_name, subscription in USER.subs.items():
             temp_list_issues = _get_issues_list_from_github(subscription.name)  # заново грузим весь репозиторий
             if not temp_list_issues:
                 return
             numbers_new_issues_list = []    # собираем все номера непросмотренных исусов подписки для печати
             for issue in temp_list_issues:
-                if date.fromisoformat(issue.created_at) >= date.fromisoformat(since_date):
-                    numbers_new_issues_list.append(issue.N)
-                    subscription.last_issue_num = issue.N
+                # issue[2] = issue's created_at data
+                if date.fromisoformat(issue[2]) >= date.fromisoformat(since_date):
+                    numbers_new_issues_list.append(issue[0])    # issue[0] = issue's N
+                    subscription.last_issue_num = issue[0]
             if numbers_new_issues_list:
                 print(subscription.name + ' repository:')
                 pretty_print_issues(temp_list_issues, numbers_new_issues_list[0]-1, numbers_new_issues_list[-1])
             else:
                 print(f'There is nothing to update in "{subscription.name}" repository.')
-        database.Database.save_sub(USER)  # перезаписываем все подписки у юзера разом
+        DB.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
 
 command_dict = {
@@ -268,7 +265,7 @@ def _run_one(command: str):
     try:
         return command_dict[cmd](*args)
     except TypeError as er:
-        #print(er)
+        print(er)
         raise errors.CommandArgsError('Wrong number of arguments provided.')
 
 
@@ -279,6 +276,8 @@ def run():
     """
     while True:
         user_command = ask_user()
+        if not user_command:
+            continue
         try:
             _run_one(user_command)
         except errors.CommandError as exc:

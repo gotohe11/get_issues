@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass, field
 import os.path
 
 from . import users
@@ -7,26 +6,29 @@ from . import subscriptions
 
 
 class Database:
-    @staticmethod
-    def load_or_create_user(user_name):
+    def __init__(self, path=os.path.expanduser('~/users_data.json')):
+        self.path = path
+
+
+    def load_or_create_user(self, user_name):
         try:
-            with open(os.path.expanduser('~/users_data.json'), 'r', encoding='utf-8') as file:
+            with open(self.path, 'r', encoding='utf-8') as file:
                 data = json.load(file)
         except FileNotFoundError:
-            with open(os.path.expanduser('~/users_data.json'), 'w', encoding='utf-8') as file:
-                data = {"vasya": {"name": "vasya", "subs": {}, "last_project": None}}  # без предварительной записи каких-либо данных ничего не работало
+            with open(self.path, 'w', encoding='utf-8') as file:
+                data = {}
                 json.dump(data, file, indent=2)
-        if user_name in data:
+        if data and user_name in data:
             user = users.User.from_dict(data[user_name])
         else:
             user = users.User(user_name)
-            Database.save_user(user)
+            Database.save_user(self, user)
         return user
 
 
-    @staticmethod
-    def save_user(user):
-        with open(os.path.expanduser('~/users_data.json'), 'r+', encoding='utf-8') as file:
+
+    def save_user(self, user):
+        with open(self.path, 'r+', encoding='utf-8') as file:
             data = json.load(file)
             data[user.name] = user.__dict__
             file.seek(0)
@@ -34,9 +36,9 @@ class Database:
             file.truncate()
 
 
-    @staticmethod
-    def save_sub(user):     # перезаписываем все подписки юзера
-        with open(os.path.expanduser('~/users_data.json'), 'r+', encoding='utf-8') as file:
+
+    def save_sub(self, user):     # перезаписываем все подписки юзера
+        with open(self.path, 'r+', encoding='utf-8') as file:
             data = json.load(file)
             data[user.name]['subs'] = {k: v.__dict__ for k, v in user.subs.items()}
             file.seek(0)
