@@ -9,11 +9,8 @@ from . import errors, github, users, subscriptions, database
 DB = database.Database()   # класс ДБ, путь сохранение - по умолчанию
 USER = None    # несет экземпляр класса юзер
 
-INFO = [
-    'Available commands:',
-        ]
-
-COMMAND_DICT = {}
+INFO = []
+COMMANDS = {}
 
 
 def pretty_print_issues(res_list, num_start, num_finish=100):
@@ -30,8 +27,8 @@ def pretty_print_issues(res_list, num_start, num_finish=100):
 
 def dec_command(cmd_name, help_info):
     def decorator(func):
-        INFO.append(help_info)
-        COMMAND_DICT[cmd_name] = func
+        INFO.append(('/' + cmd_name, help_info))
+        COMMANDS['/' + cmd_name] = func
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             value = func(*args, **kwargs)
@@ -40,12 +37,13 @@ def dec_command(cmd_name, help_info):
     return decorator
 
 
-@dec_command('/help',   '/help - commands info;')
+@dec_command('help',   'commands info;')
 def help_command():
-    print(*INFO, sep='\n')
+    print('Available commands:')
+    print(*(' - '.join(item) for item in INFO), sep='\n')
 
 
-@dec_command('/exit',  '/exit - exit;')
+@dec_command('exit',  'exit;')
 def exit_command():
     sys.exit()
 
@@ -66,9 +64,8 @@ def _get_issues_list_from_github(project_name):
         return issues_list
 
 
-@dec_command('/get',
-             '/get <owner>/<repo> (for example, "/get s0md3v/Photon") '
-             '- gets repo issues list and prints the amount of them;')
+@dec_command('get', 'gets repo issues list and prints the amount of them, '
+             'format: get <owner>/<repo> (for example, "get gotohe11/get_issue");')
 def get_command(project_name):
     global USER
 
@@ -84,8 +81,9 @@ def get_command(project_name):
         return issues_list
 
 
-@dec_command('/print',
-             '/print N - prints the N-th issue (if there is no N, prints 10 newest issues);')
+@dec_command('print',
+             'prints the N-th issue (if there is no N, prints 10 newest issues), '
+             'format: print <N>;')
 def print_command(issue_number=None):
     global USER
     if not USER or not USER.last_project:
@@ -119,8 +117,8 @@ def print_command(issue_number=None):
     return issues_list[skip:skip+limit]
 
 
-@dec_command('/next',
-             '/next - prints the next 10 issues or the remainder;')
+@dec_command('next',
+             'prints the next 10 issues or the remainder;')
 def next_command():
     global USER
     if not USER or not USER.last_project:
@@ -144,8 +142,9 @@ def next_command():
         return issues_list[num_1:num_2]
 
 
-@dec_command('/login',
-             '/login <user_name> - login or create new account (user_name is case-insensitive);')
+@dec_command('login',
+             'login or create new account (user_name is case-insensitive), '
+             'format: login <user_name>;')
 def login_command(user_name=None):   # имя получилось нечувств к регистру
     if not user_name:
         raise errors.CommandArgsError('You should text your login-name first.')
@@ -155,8 +154,9 @@ def login_command(user_name=None):   # имя получилось нечувс�
     return USER
 
 
-@dec_command('/sub',
-              '/sub <owner>/<repo> - to subscribe to the project;')
+@dec_command('sub',
+              'to subscribe to the project, '
+              'format: sub <owner>/<repo>;')
 def sub_command(project_name=None):
     global USER
     if not USER or not USER.name:
@@ -183,8 +183,9 @@ def sub_command(project_name=None):
         print(er)
 
 
-@dec_command('/unsub',
-             '/unsub <owner>/<repo> - to unsubscribe from the project;')
+@dec_command('unsub',
+             'to unsubscribe from the project, '
+             'format: unsub <owner>/<repo>;')
 def unsub_command(project_name=None):
     global USER
     if not USER or not USER.name:
@@ -201,8 +202,9 @@ def unsub_command(project_name=None):
         print(er)
 
 
-@dec_command('/update',
-             '/update - prints issues in all projects you subscribe since the last visit;')
+@dec_command('update',
+             'prints issues in all projects you subscribe since the last visit'
+             'or date, format: update <date>;')
 def update_command(since_date=None):
     """
     Prints new issues since {since_date} or since last time visit (last_issue_num)
@@ -252,11 +254,11 @@ def update_command(since_date=None):
         DB.save_sub(USER)  # перезаписываем все подписки у юзера разом
 
 
-@dec_command('/status', '/status - prints info about current user')
+@dec_command('status', 'prints info about current user;')
 def status_command():
     global USER
     if not USER or not USER.name:
-        raise errors.IncorrectOder('To update your projects, you first need to log in. '
+        raise errors.IncorrectOder('To get your user status, you first need to log in. '
                                    'Try </login> command.')
     if USER.subs:
         print(f'{USER.name}, you have {len(USER.subs)} subscription(s):')
@@ -267,8 +269,8 @@ def status_command():
         print(f'{USER.name}, you have no subscriptions yet.')
 
 
-@dec_command('/users',
-             '/users - prints a list of all registered users;')
+@dec_command('users',
+             'prints a list of all registered users.')
 def users_command():
     try:
         with open(DB.path, 'r', encoding='utf-8') as file:
@@ -276,7 +278,7 @@ def users_command():
     except FileNotFoundError:
         print('No users yet.')
     print('Registered users:')
-    print(*data, sep=', ')
+    print(*data.keys(), sep=', ')
 
 
 def ask_user():
@@ -292,11 +294,11 @@ def _run_one(command: str):
     else:
         args = []
 
-    if cmd not in COMMAND_DICT:
+    if cmd not in COMMANDS:
         raise errors.CommandNotFound('Command not found.')
 
     try:
-        return COMMAND_DICT[cmd](*args)
+        return COMMANDS[cmd](*args)
     except TypeError as er:
         print(er)
         raise errors.CommandArgsError('Wrong number of arguments provided.')

@@ -21,14 +21,13 @@ def command_stub():
     для проверки парсера, не думая о том, чтобы внутри самой команды корректно
     работало.
     """
-
     def _stub(*args):
         """ Команда-заглушка возвращает свои аргументы. """
         return args
 
-    cli.command_dict['/stub'] = _stub
+    cli.COMMANDS['/stub'] = _stub
     yield
-    del cli.command_dict['/stub']
+    del cli.COMMANDS['/stub']
 
 
 @pytest.fixture()
@@ -45,6 +44,20 @@ def mock_github():
     yield
     github.make_issues_list = original_fn
 
+
+
+class TestCliDecoratorCommand():
+    def test_dec_command(self):
+        """ Проверяем, что декоратор на тестируемой ф-ии добавляет
+        информацию о ней в словарь COMMANDS и в список INFO.
+        """
+        # определяем функцию с декоратором
+        @cli.dec_command('test_cmd', 'test_cmd info')
+        def _test_commad():
+            return '= ^ . ^ ='
+
+        assert '/test_cmd' in cli.COMMANDS
+        assert ('/test_cmd', 'test_cmd info') in cli.INFO
 
 
 class TestCliMainLogicFunc():
