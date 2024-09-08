@@ -1,0 +1,25 @@
+name: Automated get_issues tests
+
+on:
+  push
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: install dependencies
+        run: pip install -r requirements.dev.txt -r requirements.txt
+      - name: run tests
+        run: pytest --cov
+      - name: Upload results to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
