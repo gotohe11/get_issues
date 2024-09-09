@@ -45,10 +45,3 @@ def make_issues_list(project_name):
             break
 
     return total_list
-
-
-if __name__ == "__main__":
-    project_name = "shobrook/rebound"
-    l = make_issues_list(project_name)
-    for i in range(len(l)):
-        print(f'{i + 1}. {l[i]}', sep='\n')
