@@ -360,3 +360,54 @@ class TestCliUpdateCommand():
         assert cli.USER.subs[TEST_SUB_1.name].last_issue_num == len(test_list)
         assert cli.USER.subs[TEST_SUB_2.name].last_issue_num == len(test_list)
         # проверки сохраненного в бд нет
+
+
+
+@pytest.mark.usefixtures('tmp_db', 'clean_file')
+class TestCliStatusCommand():
+    def test_status_command_with_no_user(self):
+        """Проверка функции статуса пользователя
+        без предварительной регистрации пользователя"""
+        with pytest.raises(errors.IncorrectOder):
+            cli.USER = None
+            cli.status_command()
+
+
+    def test_status_command(self, mock_github):
+        """Проверка функции статуса пользователя с 2мя подписками."""
+        cli.DB = self.db
+        cli.USER = users.User(name='test_user_1')
+        cli.DB.save_user(cli.USER)  # записываем юзера в дб
+        cli.sub_command(TEST_SUB_1.name)  # добавляем новому пользователю 1 подписку
+        cli.sub_command(TEST_SUB_2.name)  # добавляем вторую
+        result = [(1, 'sub_name_1', TEST_ISSUES, 0), (2, 'sub_name_2', TEST_ISSUES, 0)]
+        assert cli.status_command() == result
+
+
+    def test_status_command_no_sub(self, mock_github):
+        """Проверка функции статуса пользователя без подписок."""
+        cli.DB = self.db
+        cli.USER = users.User(name='test_user_1')
+        cli.DB.save_user(cli.USER)  # записываем юзера в дб
+        assert cli.status_command() == []
+
+
+@pytest.mark.usefixtures('tmp_db', 'clean_file')
+class TestCliUsersCommand():
+    def test_users_command(self):
+        """Проверка функции users (получение информации о
+        всех зарегистрированных пользователях)."""
+        cli.DB = self.db
+        self.db.load_or_create_user('Карамелька')  # записываем юзеров в дб
+        self.db.load_or_create_user('Коржик')
+        self.db.load_or_create_user('Компот')
+        assert cli.users_command() == ['Карамелька', 'Коржик', 'Компот']
+
+
+    def test_users_command_no_file(self):
+        """Проверка функции users (получение информации о
+        всех зарегистрированных пользователях) без
+        существующих зарегистрированных пользователей"""
+        cli.DB = database.Database('/tmp/test/test_data.json')   # меняем директорию где нет дб
+        assert cli.users_command() == None
+

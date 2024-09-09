@@ -260,13 +260,16 @@ def status_command():
     if not USER or not USER.name:
         raise errors.IncorrectOder('To get your user status, you first need to log in. '
                                    'Try </login> command.')
+    subs_list = []
     if USER.subs:
         print(f'{USER.name}, you have {len(USER.subs)} subscription(s):')
         for i, sub in enumerate(USER.subs.values(), 1):
             print(f'{i}. {sub.name}, {len(sub.issues_list)} issues, '
                   f'last time read issue - {sub.last_issue_num}')
+            subs_list.append((i, sub.name, sub.issues_list, sub.last_issue_num))
     else:
         print(f'{USER.name}, you have no subscriptions yet.')
+    return subs_list
 
 
 @dec_command('users',
@@ -275,10 +278,12 @@ def users_command():
     try:
         with open(DB.path, 'r', encoding='utf-8') as file:
             data = json.load(file)
-    except FileNotFoundError:
+    except FileNotFoundError as er:
         print('No users yet.')
+        return None
     print('Registered users:')
     print(*data.keys(), sep=', ')
+    return list(data.keys())
 
 
 def ask_user():
