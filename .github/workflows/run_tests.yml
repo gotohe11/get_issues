@@ -1,4 +1,4 @@
-name: Automated get_issues tests
+name: tests
 
 on:
   push
